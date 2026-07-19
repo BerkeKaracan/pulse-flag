@@ -19,14 +19,14 @@ Authorization: Bearer <PROJECT_DELIVERY_API_KEY>
 
 ## Admin contract
 
-All `/admin/*` routes require:
+All `/admin/*` routes require **both**:
 
-1. `Authorization: Bearer <FEATURE_FLAGS_API_KEY>`
-2. `X-User-Id: <supabase-user-id>` (set by the Next.js BFF after session auth)
+1. `Authorization: Bearer <FEATURE_FLAGS_API_KEY>` — service key (BFF only)
+2. `X-Supabase-Access-Token: <user access JWT>` — verified with `SUPABASE_JWT_SECRET`
+
+User id is taken from the JWT `sub` claim. Spoofable `X-User-Id` is **not** accepted.
 
 Projects are scoped by `user_id`. Cross-tenant access returns `404`.
-
-Keep this API private to the BFF when possible. Possession of the platform admin key plus a victim’s user id is enough to act as that user.
 
 ## Local run
 

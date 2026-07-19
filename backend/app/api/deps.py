@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import uuid
 
+import jwt
 from fastapi import Depends, Header, HTTPException, status
+from jwt import InvalidTokenError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -52,33 +54,70 @@ def require_admin_api_key(
         )
 
 
-def require_user_id(
-    x_user_id: str | None = Header(default=None, alias="X-User-Id"),
+def _extract_bearer(raw: str | None) -> str | None:
+    if raw is None or not raw.strip():
+        return None
+    value = raw.strip()
+    scheme, _, token = value.partition(" ")
+    if scheme.lower() == "bearer" and token.strip():
+        return token.strip()
+    # Allow raw JWT without Bearer prefix.
+    if value.count(".") >= 2:
+        return value
+    return None
+
+
+def require_supabase_user(
+    x_supabase_access_token: str | None = Header(
+        default=None,
+        alias="X-Supabase-Access-Token",
+    ),
 ) -> str:
     """
-    Owner id forwarded by the trusted Next.js BFF after a Supabase session check.
+    Verify the caller's Supabase access token and return auth.users.id (JWT sub).
 
-    FastAPI does not verify Supabase JWTs itself — keep the admin API private
-    (BFF-only / network-restricted) so clients cannot spoof X-User-Id with the
-    platform admin key.
+    Identity is never taken from X-User-Id — that header is ignored.
     """
-    user_id = (x_user_id or "").strip()
-    if not user_id:
+    settings = get_settings()
+    secret = (settings.supabase_jwt_secret or "").strip()
+    if not secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="SUPABASE_JWT_SECRET is not configured",
+        )
+
+    token = _extract_bearer(x_supabase_access_token)
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing X-User-Id header",
+            detail="Missing X-Supabase-Access-Token",
         )
-    if len(user_id) > 64:
+
+    try:
+        payload = jwt.decode(
+            token,
+            secret,
+            algorithms=["HS256"],
+            audience="authenticated",
+        )
+    except InvalidTokenError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid X-User-Id header",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired Supabase access token",
+        ) from exc
+
+    user_id = payload.get("sub")
+    if not isinstance(user_id, str) or not user_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Supabase token missing subject",
         )
-    return user_id
+    return user_id.strip()
 
 
 def get_owned_project(
     project_id: uuid.UUID,
-    user_id: str = Depends(require_user_id),
+    user_id: str = Depends(require_supabase_user),
     db: Session = Depends(get_db),
 ) -> Project:
     """Load a project only if it belongs to the caller; otherwise 404."""

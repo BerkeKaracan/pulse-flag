@@ -49,14 +49,14 @@ Pulse Flag is designed so a **shared admin URL** is not enough to manage flags.
 | --- | --- |
 | Admin UI (`/projects`, …) | Supabase session (Google / GitHub OAuth) |
 | Next BFF `/api/admin/*` | Supabase session **and** server-side platform admin key |
-| FastAPI `/admin/*` | Platform `FEATURE_FLAGS_API_KEY` **and** `X-User-Id` ownership |
+| FastAPI `/admin/*` | Platform `FEATURE_FLAGS_API_KEY` **and** verified Supabase access JWT (`sub` = owner) |
 | FastAPI `GET /evaluate` | **Project delivery** `api_key` only (not the platform admin key) |
 | Multi-tenant isolation | Each project stores `user_id` (Supabase user id); list/update/delete are scoped |
 
 ### Hard rules
 
 1. **Never** put `FEATURE_FLAGS_ADMIN_API_KEY` / `FEATURE_FLAGS_API_KEY` in `NEXT_PUBLIC_*` env vars.
-2. Treat the FastAPI admin API as **private infrastructure**. Prefer calling it only from the Next.js BFF. If the API is on a public URL, anyone who steals the platform admin key can spoof `X-User-Id` — keep that key strong and rotate it if leaked.
+2. Treat the FastAPI admin API as **private infrastructure**. Prefer calling it only from the Next.js BFF. Admin routes need the platform key **and** a valid Supabase user JWT (verified with `SUPABASE_JWT_SECRET`).
 3. Product backends call **`GET /evaluate` with the project delivery key**, not the platform admin key.
 4. Empty targeting lists mean **match nobody** (no silent “enable for everyone”).
 5. In production set `APP_ENV=production` on the API (hides `/docs` and disables the loose CORS regex).
@@ -153,6 +153,7 @@ Unknown or inactive flags fail closed (`enabled: false`).
 | --- | --- |
 | `DATABASE_URL` | Supabase **Session pooler** URI (`…@…pooler.supabase.com:5432/postgres?sslmode=require`), scheme `postgresql+psycopg://` |
 | `FEATURE_FLAGS_API_KEY` | Long random secret (`openssl rand -hex 32`) |
+| `SUPABASE_JWT_SECRET` | Supabase → Settings → API → JWT Secret |
 | `APP_ENV` | `production` |
 | `CORS_ORIGINS` | Exact admin origin, e.g. `https://your-admin.vercel.app` |
 

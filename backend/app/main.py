@@ -44,7 +44,11 @@ cors_kwargs: dict = {
     "allow_origins": settings.cors_origin_list,
     "allow_credentials": True,
     "allow_methods": ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    "allow_headers": ["Authorization", "Content-Type", "X-User-Id"],
+    "allow_headers": [
+        "Authorization",
+        "Content-Type",
+        "X-Supabase-Access-Token",
+    ],
 }
 # Localhost convenience only — not in production.
 if not settings.is_production:

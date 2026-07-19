@@ -22,8 +22,11 @@ async function proxy(request: NextRequest, context: RouteContext) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (!user) {
+  if (!user || !session?.access_token) {
     return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
   }
 
@@ -43,12 +46,12 @@ async function proxy(request: NextRequest, context: RouteContext) {
   const apiUrl = getFeatureFlagsApiUrl();
   const target = `${apiUrl}/admin/${path.join("/")}${request.nextUrl.search}`;
 
-  // Build headers from scratch — never forward client Authorization / X-User-Id.
+  // Service key + verified-on-API user JWT. Never send spoofable X-User-Id.
   const headers = new Headers();
   const contentType = request.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
   headers.set("authorization", `Bearer ${adminKey}`);
-  headers.set("X-User-Id", user.id);
+  headers.set("X-Supabase-Access-Token", session.access_token);
 
   let body: ArrayBuffer | undefined;
   if (request.method !== "GET" && request.method !== "HEAD") {

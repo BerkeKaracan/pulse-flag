@@ -65,6 +65,8 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5433/pulse_flag"
     feature_flags_api_key: str | None = None
+    # Supabase JWT Secret (Dashboard → Settings → API → JWT Secret). Used to verify user tokens.
+    supabase_jwt_secret: str | None = None
     # development | production
     app_env: str = "development"
     # Exact browser origins allowed for CORS (admin UI). Required in production.

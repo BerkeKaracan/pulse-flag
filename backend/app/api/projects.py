@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_owned_project, require_admin_api_key, require_user_id
+from app.api.deps import get_owned_project, require_admin_api_key, require_supabase_user
 from app.database import get_db
 from app.models import Project
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
@@ -20,7 +20,7 @@ router = APIRouter(
 
 @router.get("", response_model=list[ProjectRead])
 def list_projects(
-    user_id: str = Depends(require_user_id),
+    user_id: str = Depends(require_supabase_user),
     db: Session = Depends(get_db),
 ) -> list[Project]:
     stmt = (
@@ -34,7 +34,7 @@ def list_projects(
 @router.post("", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 def create_project(
     payload: ProjectCreate,
-    user_id: str = Depends(require_user_id),
+    user_id: str = Depends(require_supabase_user),
     db: Session = Depends(get_db),
 ) -> Project:
     existing = db.scalar(select(Project).where(Project.slug == payload.slug))
