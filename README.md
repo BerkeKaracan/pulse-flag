@@ -117,25 +117,23 @@ Cevap her zaman:
 { "enabled": true }
 ```
 
-## Canlıya alma (Vercel + Railway)
+## Canlıya alma (Vercel + Render + Supabase)
 
-### A) Railway — Postgres + FastAPI
+### A) Render — FastAPI (DB = Supabase Postgres)
 
-1. Railway’de yeni proje oluştur.  
-2. **PostgreSQL** ekle.  
-3. Backend service ekle; root directory: `backend` (Dockerfile kullanır).  
-4. Env değişkenleri:
+1. Render’da Web Service; root directory: `backend` (Dockerfile).  
+2. Env:
 
 | Key | Value |
 | --- | --- |
-| `DATABASE_URL` | Railway Postgres URL (`postgresql+psycopg://...` — dialect `psycopg` olmalı) |
+| `DATABASE_URL` | Supabase **Session pooler** URI (`postgresql+psycopg://...@...pooler.supabase.com:5432/postgres?sslmode=require`) |
 | `FEATURE_FLAGS_API_KEY` | Güçlü rastgele secret |
 | `CORS_ORIGINS` | `https://<your-admin>.vercel.app` |
 
-5. Healthcheck path: `/health` (`railway.toml` zaten ayarlı).  
-6. Public URL’yi not et → örn. `https://pulse-flag-api.up.railway.app`
+3. Healthcheck: `/health`  
+4. Public API URL’yi not et.
 
-> `DATABASE_URL` Railway’den `postgres://` gelirse başına `postgresql+psycopg://` olacak şekilde düzenle veya connection string’i dönüştür.
+> Render çoğu zaman **IPv6 outbound açamaz**. Supabase direct host (`db.<ref>.supabase.co`) IPv6’ya çözülürse startup `Network is unreachable` ile düşer. Dashboard → Database → Connect → **Session pooler** kullan.
 
 ### B) Vercel — Admin Next.js
 
@@ -147,15 +145,15 @@ Cevap her zaman:
 | `NEXT_PUBLIC_APP_URL` | `https://<your-admin>.vercel.app` |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
-| `FEATURE_FLAGS_API_URL` | Railway API URL |
-| `FEATURE_FLAGS_ADMIN_API_KEY` | Railway’deki `FEATURE_FLAGS_API_KEY` ile **aynı** |
+| `FEATURE_FLAGS_API_URL` | Render API URL |
+| `FEATURE_FLAGS_ADMIN_API_KEY` | Render’daki `FEATURE_FLAGS_API_KEY` ile **aynı** |
 
 Supabase redirect URL (production):
 
 - `https://<your-admin>.vercel.app/api/auth/callback`
 
 3. Deploy.  
-4. Railway `CORS_ORIGINS` içine Vercel URL’yi ekle (direkt tarayıcı denemeleri için).
+4. Render `CORS_ORIGINS` içine Vercel URL’yi ekle.
 
 ### C) Canlı smoke test
 
