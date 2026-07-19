@@ -72,14 +72,13 @@ function friendlyError(status: number, body: string): string {
 
 async function cookieHeaderForServer(): Promise<string | undefined> {
   if (typeof window !== "undefined") return undefined;
-  // Server Components must forward the browser session to the BFF.
   const { cookies } = await import("next/headers");
   const jar = await cookies();
   const parts = jar.getAll().map((c) => `${c.name}=${c.value}`);
   return parts.length > 0 ? parts.join("; ") : undefined;
 }
 
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
+async function apiViaBff<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${resolveAppOrigin()}/api/admin${path}`;
 
   const headersInit = new Headers(init?.headers);
@@ -117,6 +116,27 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  // Server Components: call FastAPI directly (skip Vercel self-fetch hop).
+  // Dynamic import keeps server-only deps out of the browser bundle.
+  if (typeof window === "undefined") {
+    const { AdminUpstreamError, adminUpstreamJson } = await import(
+      "@/lib/admin-upstream"
+    );
+    try {
+      return await adminUpstreamJson<T>(path, init);
+    } catch (err) {
+      if (err instanceof AdminUpstreamError) {
+        throw new Error(err.message);
+      }
+      throw err;
+    }
+  }
+
+  // Browser: go through the BFF so cookies stay on same origin.
+  return apiViaBff<T>(path, init);
+}
+
 export async function evaluateFlag(input: {
   key: string;
   tenantId: string;
@@ -134,14 +154,15 @@ export async function evaluateFlag(input: {
     headersInit.set("Authorization", `Bearer ${input.apiKey}`);
   }
 
-  const cookieHeader = await cookieHeaderForServer();
-  if (cookieHeader) {
-    headersInit.set("Cookie", cookieHeader);
+  const origin = typeof window === "undefined" ? resolveAppOrigin() : "";
+  if (typeof window === "undefined") {
+    const cookieHeader = await cookieHeaderForServer();
+    if (cookieHeader) headersInit.set("Cookie", cookieHeader);
   }
 
   let res: Response;
   try {
-    res = await fetch(`${resolveAppOrigin()}/api/evaluate?${params}`, {
+    res = await fetch(`${origin}/api/evaluate?${params}`, {
       headers: headersInit,
       cache: "no-store",
     });

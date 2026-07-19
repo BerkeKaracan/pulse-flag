@@ -38,6 +38,40 @@ def test_resolve_via_jwt_secret(monkeypatch: pytest.MonkeyPatch):
     user_id, notes = resolve_supabase_user_id(token, settings)
     assert user_id == "user-abc-123"
     assert "jwt_secret_ok" in notes
+    # Local verify succeeds — Auth /user must not run.
+    assert not any(n.startswith("auth_api_") for n in notes)
+
+
+def test_auth_api_is_last_resort(monkeypatch: pytest.MonkeyPatch):
+    """JWKS / JWT secret fail → only then Auth /user."""
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "anon")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", "x" * 32)
+    get_settings.cache_clear()
+    settings = get_settings()
+
+    calls: list[str] = []
+
+    def fake_jwks(token: str, url: str):
+        calls.append("jwks")
+        return None, "jwks_invalid"
+
+    def fake_secret(token: str, secret: str):
+        calls.append("jwt_secret")
+        return None, "jwt_secret_invalid"
+
+    def fake_auth_api(token: str, s: Settings):
+        calls.append("auth_api")
+        return "user-from-auth-api", "auth_api_ok"
+
+    monkeypatch.setattr("app.auth.supabase._verify_via_jwks", fake_jwks)
+    monkeypatch.setattr("app.auth.supabase._verify_via_jwt_secret", fake_secret)
+    monkeypatch.setattr("app.auth.supabase._verify_via_auth_api", fake_auth_api)
+
+    user_id, notes = resolve_supabase_user_id("any-token", settings)
+    assert user_id == "user-from-auth-api"
+    assert calls == ["jwks", "jwt_secret", "auth_api"]
+    assert notes == ["jwks_invalid", "jwt_secret_invalid", "auth_api_ok"]
 
 
 def test_require_supabase_user_rejects_bad_token(monkeypatch: pytest.MonkeyPatch):

@@ -121,23 +121,9 @@ def resolve_supabase_user_id(token: str, settings: Settings) -> tuple[str | None
     """
     Resolve auth.users.id from an access token.
 
-    Returns (user_id_or_none, attempt_notes).
+    Prefer local verification (JWKS / JWT secret) for latency; Auth /user last.
     """
     notes: list[str] = []
-
-    user_id, note = _verify_via_auth_api(token, settings)
-    notes.append(note)
-    if user_id:
-        return user_id, notes
-
-    secret = _clean(settings.supabase_jwt_secret)
-    if secret:
-        user_id, note = _verify_via_jwt_secret(token, secret)
-        notes.append(note)
-        if user_id:
-            return user_id, notes
-    else:
-        notes.append("jwt_secret_skipped")
 
     url = _clean(settings.resolved_supabase_url)
     if url:
@@ -148,6 +134,20 @@ def resolve_supabase_user_id(token: str, settings: Settings) -> tuple[str | None
     else:
         notes.append("jwks_skipped")
 
+    secret = _clean(settings.supabase_jwt_secret)
+    if secret:
+        user_id, note = _verify_via_jwt_secret(token, secret)
+        notes.append(note)
+        if user_id:
+            return user_id, notes
+    else:
+        notes.append("jwt_secret_skipped")
+
+    user_id, note = _verify_via_auth_api(token, settings)
+    notes.append(note)
+    if user_id:
+        return user_id, notes
+
     return None, notes
 
 
@@ -156,5 +156,6 @@ def auth_configured(settings: Settings) -> bool:
         _clean(settings.resolved_supabase_url)
         and _clean(settings.resolved_supabase_anon_key)
     )
+    has_url_for_jwks = bool(_clean(settings.resolved_supabase_url))
     has_jwt = bool(_clean(settings.supabase_jwt_secret))
-    return has_auth_api or has_jwt
+    return has_auth_api or has_url_for_jwks or has_jwt
