@@ -1,12 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-function copyCookies(from: NextResponse, to: NextResponse) {
-  from.cookies.getAll().forEach((cookie) => {
-    to.cookies.set(cookie.name, cookie.value);
-  });
-}
-
 export async function middleware(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
@@ -18,22 +12,29 @@ export async function middleware(request: NextRequest) {
 
   if (isPublic) {
     if (pathname.startsWith("/login") && user) {
-      const redirectResponse = NextResponse.redirect(
-        new URL("/projects", request.url),
-      );
-      copyCookies(supabaseResponse, redirectResponse);
+      const url = request.nextUrl.clone();
+      url.pathname = "/projects";
+      url.search = "";
+      const redirectResponse = NextResponse.redirect(url);
+      supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
+        redirectResponse.cookies.set(name, value);
+      });
       return redirectResponse;
     }
     return supabaseResponse;
   }
 
   if (!user) {
-    const loginUrl = new URL("/login", request.url);
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
     if (pathname !== "/") {
-      loginUrl.searchParams.set("callbackUrl", pathname);
+      url.searchParams.set("callbackUrl", pathname);
     }
-    const redirectResponse = NextResponse.redirect(loginUrl);
-    copyCookies(supabaseResponse, redirectResponse);
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
+      redirectResponse.cookies.set(name, value);
+    });
     return redirectResponse;
   }
 
@@ -41,5 +42,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: [
+    /*
+     * Skip static assets. Keep /api/auth/callback in the matcher so the
+     * session helper can still refresh cookies when needed, but auth gate
+     * treats it as public.
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

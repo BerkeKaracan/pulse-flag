@@ -137,7 +137,8 @@ const en: Dictionary = {
     google: "Continue with Google",
     github: "Continue with GitHub",
     hint: "No email/password. Delivery evaluate stays public for product APIs.",
-    authError: "Sign-in failed. Try again or check Supabase OAuth settings.",
+    authError:
+      "Sign-in failed. Check Supabase redirect URL: /api/auth/callback",
   },
   common: {
     copy: "Copy",
@@ -284,7 +285,8 @@ const tr: Dictionary = {
     google: "Google ile devam et",
     github: "GitHub ile devam et",
     hint: "E-posta/şifre yok. Delivery evaluate ürün API’leri için açık kalır.",
-    authError: "Giriş başarısız. Tekrar deneyin veya Supabase OAuth ayarlarını kontrol edin.",
+    authError:
+      "Giriş başarısız. Supabase redirect URL’yi kontrol edin: /api/auth/callback",
   },
   common: {
     copy: "Kopyala",

@@ -21,19 +21,36 @@ export function LoginButtons({
   async function signIn(provider: "google" | "github") {
     setPending(provider);
     setError(null);
-    const supabase = createClient();
-    const redirectTo = new URL("/api/auth/callback", window.location.origin);
-    redirectTo.searchParams.set("next", nextPath);
 
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: redirectTo.toString(),
-      },
-    });
+    try {
+      const supabase = createClient();
+      const redirectTo = new URL("/api/auth/callback", window.location.origin);
+      redirectTo.searchParams.set("next", nextPath);
 
-    if (oauthError) {
-      setError(oauthError.message);
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: redirectTo.toString(),
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (oauthError) {
+        setError(oauthError.message);
+        setPending(null);
+        return;
+      }
+
+      if (!data.url) {
+        setError("OAuth URL could not be created.");
+        setPending(null);
+        return;
+      }
+
+      // Hard navigation — avoids stuck "…" if the SDK redirect is blocked.
+      window.location.assign(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign-in failed");
       setPending(null);
     }
   }
