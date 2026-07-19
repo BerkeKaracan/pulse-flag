@@ -26,15 +26,15 @@ SaaS Engine  →  özelliği açar / kapar
 
 ```text
 pulse-flag/
-├── auth.ts                        # Auth.js (Google + GitHub + allowlist)
-├── middleware.ts                  # Session gate for dashboard + admin BFF
+├── middleware.ts                  # Supabase session gate
 ├── app/
-│   ├── login/                     # OAuth sign-in
-│   ├── (dashboard)/projects/...   # Admin UI
+│   ├── login/                     # Google / GitHub via Supabase OAuth
+│   ├── (dashboard)/projects/...   # Multi-tenant admin UI
 │   └── api/
-│       ├── auth/[...nextauth]/    # Auth.js handlers
-│       ├── admin/[...path]/       # BFF → FastAPI /admin/* (session required)
+│       ├── auth/callback/         # Supabase OAuth code exchange
+│       ├── admin/[...path]/       # BFF → FastAPI /admin/* (+ X-User-Id)
 │       └── evaluate/              # BFF → FastAPI /evaluate (public)
+├── lib/supabase/                  # browser + server + middleware clients
 ├── components/
 ├── lib/api.ts
 ├── backend/
@@ -79,21 +79,18 @@ npm run dev
 
 ```env
 NEXT_PUBLIC_APP_URL=http://localhost:3001
-AUTH_SECRET=generate-a-long-random-string
-AUTH_URL=http://localhost:3001
-AUTH_GOOGLE_ID=
-AUTH_GOOGLE_SECRET=
-AUTH_GITHUB_ID=
-AUTH_GITHUB_SECRET=
-ADMIN_EMAILS=you@gmail.com
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 FEATURE_FLAGS_API_URL=http://127.0.0.1:8002
 FEATURE_FLAGS_ADMIN_API_KEY=dev-feature-flags-api-key
 ```
 
-OAuth callback URL’leri (Google Cloud Console / GitHub OAuth App):
+Supabase Dashboard → Authentication → URL configuration:
 
-- `http://localhost:3001/api/auth/callback/google`
-- `http://localhost:3001/api/auth/callback/github`
+- Site URL: `http://localhost:3001`
+- Redirect URL: `http://localhost:3001/api/auth/callback`
+
+Google / GitHub provider’larını Supabase Auth içinde etkinleştir.
 
 Panel: `http://localhost:3001/projects` (oturum yoksa `/login`)
 
@@ -148,18 +145,14 @@ Cevap her zaman:
 | Key | Value |
 | --- | --- |
 | `NEXT_PUBLIC_APP_URL` | `https://<your-admin>.vercel.app` |
-| `AUTH_SECRET` | Güçlü rastgele secret (`openssl rand -base64 32`) |
-| `AUTH_URL` | `https://<your-admin>.vercel.app` |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth client |
-| `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth App |
-| `ADMIN_EMAILS` | Virgülle ayrılmış yönetici e-postaları |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `FEATURE_FLAGS_API_URL` | Railway API URL |
 | `FEATURE_FLAGS_ADMIN_API_KEY` | Railway’deki `FEATURE_FLAGS_API_KEY` ile **aynı** |
 
-Production OAuth callbacks:
+Supabase redirect URL (production):
 
-- `https://<your-admin>.vercel.app/api/auth/callback/google`
-- `https://<your-admin>.vercel.app/api/auth/callback/github`
+- `https://<your-admin>.vercel.app/api/auth/callback`
 
 3. Deploy.  
 4. Railway `CORS_ORIGINS` içine Vercel URL’yi ekle (direkt tarayıcı denemeleri için).
@@ -177,9 +170,10 @@ FEATURE_FLAGS_API_KEY=<project_delivery_api_key>
 
 ## Güvenlik notları
 
-- Admin panel: **yalnızca Google / GitHub** (Auth.js). Email/şifre yok.  
-- Giriş `ADMIN_EMAILS` allowlist’ine bağlıdır; listede olmayan OAuth hesabı reddedilir.  
-- Middleware + BFF `auth()`: `/projects/*` ve `/api/admin/*` oturum ister.  
+- Admin panel: **Supabase Auth** ile Google / GitHub. Email/şifre yok.  
+- Google veya GitHub ile giren her kullanıcı yetkilidir (allowlist yok).  
+- Middleware + BFF: `/projects/*` ve `/api/admin/*` aktif Supabase session ister.  
+- BFF, FastAPI’ye `X-User-Id: <supabase user.id>` ekler (multi-tenant hazırlık).  
 - `GET /evaluate` (ve `/api/evaluate`) login gerektirmez — ürün API’leri bozulmaz.  
 - Admin key yalnızca sunucuda: `FEATURE_FLAGS_ADMIN_API_KEY` (`NEXT_PUBLIC_` yok).  
 - Delivery `api_key` proje bazlıdır; SaaS Engine secret’ıdır.  

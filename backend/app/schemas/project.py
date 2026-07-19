@@ -19,6 +19,7 @@ class ProjectRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    user_id: str
     name: str
     slug: str
     description: str | None

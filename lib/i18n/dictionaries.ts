@@ -16,8 +16,7 @@ export type Dictionary = {
     google: string;
     github: string;
     hint: string;
-    accessDenied: string;
-    configError: string;
+    authError: string;
   };
   common: {
     copy: string;
@@ -133,13 +132,12 @@ const en: Dictionary = {
     signOut: "Sign out",
   },
   login: {
-    title: "Admin sign in",
-    subtitle: "Use Google or GitHub. Only allowlisted emails can enter.",
+    title: "Sign in",
+    subtitle: "Continue with Google or GitHub to manage your projects.",
     google: "Continue with Google",
     github: "Continue with GitHub",
     hint: "No email/password. Delivery evaluate stays public for product APIs.",
-    accessDenied: "This account is not on the admin allowlist.",
-    configError: "Auth is misconfigured. Check AUTH_* and ADMIN_EMAILS env vars.",
+    authError: "Sign-in failed. Try again or check Supabase OAuth settings.",
   },
   common: {
     copy: "Copy",
@@ -281,13 +279,12 @@ const tr: Dictionary = {
     signOut: "Çıkış",
   },
   login: {
-    title: "Yönetici girişi",
-    subtitle: "Google veya GitHub ile girin. Yalnızca allowlist’teki e-postalar girebilir.",
+    title: "Giriş yap",
+    subtitle: "Projelerinizi yönetmek için Google veya GitHub ile devam edin.",
     google: "Google ile devam et",
     github: "GitHub ile devam et",
     hint: "E-posta/şifre yok. Delivery evaluate ürün API’leri için açık kalır.",
-    accessDenied: "Bu hesap yönetici allowlist’inde değil.",
-    configError: "Auth yapılandırması hatalı. AUTH_* ve ADMIN_EMAILS env’lerini kontrol edin.",
+    authError: "Giriş başarısız. Tekrar deneyin veya Supabase OAuth ayarlarını kontrol edin.",
   },
   common: {
     copy: "Kopyala",

@@ -1,27 +1,29 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth, signIn } from "@/auth";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { LocaleProvider } from "@/components/locale-provider";
-import { Button } from "@/components/ui/button";
-import { isAdminEmail } from "@/lib/admin-emails";
+import { LoginButtons } from "@/components/login-buttons";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
+import { createClient } from "@/lib/supabase/server";
 
 type LoginPageProps = {
   searchParams: Promise<{ error?: string; callbackUrl?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const session = await auth();
-  if (isAdminEmail(session?.user?.email)) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) {
     redirect("/projects");
   }
 
   const { error, callbackUrl } = await searchParams;
   const { dict, locale } = await getDictionary();
-  const redirectTo =
+  const nextPath =
     callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/projects";
-  const showDenied = error === "AccessDenied" || error === "Configuration";
+  const showError = Boolean(error);
 
   return (
     <LocaleProvider locale={locale}>
@@ -44,38 +46,21 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </h1>
           <p className="mt-2 text-sm text-zinc-600">{dict.login.subtitle}</p>
 
-          {showDenied ? (
+          {showError ? (
             <p
               className="mt-6 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
               role="alert"
             >
-              {error === "Configuration"
-                ? dict.login.configError
-                : dict.login.accessDenied}
+              {dict.login.authError}
             </p>
           ) : null}
 
-          <div className="mt-8 flex flex-col gap-3">
-            <form
-              action={async () => {
-                "use server";
-                await signIn("google", { redirectTo });
-              }}
-            >
-              <Button type="submit" className="w-full" variant="secondary">
-                {dict.login.google}
-              </Button>
-            </form>
-            <form
-              action={async () => {
-                "use server";
-                await signIn("github", { redirectTo });
-              }}
-            >
-              <Button type="submit" className="w-full" variant="secondary">
-                {dict.login.github}
-              </Button>
-            </form>
+          <div className="mt-8">
+            <LoginButtons
+              googleLabel={dict.login.google}
+              githubLabel={dict.login.github}
+              nextPath={nextPath}
+            />
           </div>
 
           <p className="mt-8 text-xs text-zinc-500">{dict.login.hint}</p>

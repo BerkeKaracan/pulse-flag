@@ -1,34 +1,42 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { isAdminEmail } from "@/lib/admin-emails";
+import { NextResponse, type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/middleware";
 
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
+export async function middleware(request: NextRequest) {
+  const { supabaseResponse, user } = await updateSession(request);
+  const { pathname } = request.nextUrl;
+
   const isPublic =
     pathname.startsWith("/login") ||
-    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/auth/callback") ||
     pathname.startsWith("/api/evaluate");
 
-  const email = req.auth?.user?.email;
-  const isLoggedIn = isAdminEmail(email);
-
   if (isPublic) {
-    if (pathname.startsWith("/login") && isLoggedIn) {
-      return NextResponse.redirect(new URL("/projects", req.nextUrl.origin));
+    if (pathname.startsWith("/login") && user) {
+      const redirectResponse = NextResponse.redirect(
+        new URL("/projects", request.url),
+      );
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie.name, cookie.value);
+      });
+      return redirectResponse;
     }
-    return NextResponse.next();
+    return supabaseResponse;
   }
 
-  if (!isLoggedIn) {
-    const loginUrl = new URL("/login", req.nextUrl.origin);
+  if (!user) {
+    const loginUrl = new URL("/login", request.url);
     if (pathname !== "/") {
       loginUrl.searchParams.set("callbackUrl", pathname);
     }
-    return NextResponse.redirect(loginUrl);
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value);
+    });
+    return redirectResponse;
   }
 
-  return NextResponse.next();
-});
+  return supabaseResponse;
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],

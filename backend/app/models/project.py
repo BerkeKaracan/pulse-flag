@@ -25,6 +25,8 @@ class Project(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
+    # Supabase auth.users.id — scopes projects to the signed-in owner
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
     description: Mapped[str | None] = mapped_column(String(1024), nullable=True)

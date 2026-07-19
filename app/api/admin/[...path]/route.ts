@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { isAdminEmail } from "@/lib/admin-emails";
 import {
   getFeatureFlagsAdminApiKey,
   getFeatureFlagsApiUrl,
 } from "@/lib/server-env";
+import { createClient } from "@/lib/supabase/server";
 
 type RouteContext = {
   params: Promise<{ path: string[] }>;
 };
 
 async function proxy(request: NextRequest, context: RouteContext) {
-  const session = await auth();
-  if (!isAdminEmail(session?.user?.email)) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
     return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
   }
 
@@ -25,6 +28,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
   const contentType = request.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
   if (adminKey) headers.set("authorization", `Bearer ${adminKey}`);
+  headers.set("X-User-Id", user.id);
 
   let body: ArrayBuffer | undefined;
   if (request.method !== "GET" && request.method !== "HEAD") {

@@ -1,15 +1,19 @@
 import Link from "next/link";
-import { auth } from "@/auth";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SignOutButton } from "@/components/sign-out-button";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
+import { createClient } from "@/lib/supabase/server";
 
 export async function DashboardNav() {
   const { dict } = await getDictionary();
-  const session = await auth();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const apiUrl = process.env.FEATURE_FLAGS_API_URL ?? "http://127.0.0.1:8002";
   const docsUrl =
     process.env.NEXT_PUBLIC_API_DOCS_URL ?? `${apiUrl.replace(/\/$/, "")}/docs`;
+  const email = user?.email ?? null;
 
   return (
     <header className="border-b border-zinc-200/80 bg-white/75 backdrop-blur-md">
@@ -33,10 +37,10 @@ export async function DashboardNav() {
             {dict.nav.apiDocs}
           </a>
           <LocaleSwitcher />
-          {session?.user?.email ? (
+          {email ? (
             <div className="flex items-center gap-2 border-l border-zinc-200 pl-4">
               <span className="max-w-[12rem] truncate text-xs text-zinc-500">
-                {session.user.email}
+                {email}
               </span>
               <SignOutButton label={dict.nav.signOut} />
             </div>
