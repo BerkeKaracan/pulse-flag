@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
+function copyCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach((cookie) => {
+    to.cookies.set(cookie.name, cookie.value);
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
@@ -15,9 +21,7 @@ export async function middleware(request: NextRequest) {
       const redirectResponse = NextResponse.redirect(
         new URL("/projects", request.url),
       );
-      supabaseResponse.cookies.getAll().forEach((cookie) => {
-        redirectResponse.cookies.set(cookie.name, cookie.value);
-      });
+      copyCookies(supabaseResponse, redirectResponse);
       return redirectResponse;
     }
     return supabaseResponse;
@@ -29,9 +33,7 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set("callbackUrl", pathname);
     }
     const redirectResponse = NextResponse.redirect(loginUrl);
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value);
-    });
+    copyCookies(supabaseResponse, redirectResponse);
     return redirectResponse;
   }
 
