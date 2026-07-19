@@ -20,8 +20,8 @@ def _clean(value: str | None) -> str:
 
 def _verify_via_auth_api(token: str, settings: Settings) -> tuple[str | None, str]:
     """Ask Supabase Auth who this access token belongs to (algorithm-agnostic)."""
-    base = _clean(settings.supabase_url).rstrip("/")
-    anon = _clean(settings.supabase_anon_key)
+    base = _clean(settings.resolved_supabase_url).rstrip("/")
+    anon = _clean(settings.resolved_supabase_anon_key)
     if not base or not anon:
         return None, "auth_api_skipped_no_url_or_anon"
 
@@ -139,7 +139,7 @@ def resolve_supabase_user_id(token: str, settings: Settings) -> tuple[str | None
     else:
         notes.append("jwt_secret_skipped")
 
-    url = _clean(settings.supabase_url)
+    url = _clean(settings.resolved_supabase_url)
     if url:
         user_id, note = _verify_via_jwks(token, url)
         notes.append(note)
@@ -152,6 +152,9 @@ def resolve_supabase_user_id(token: str, settings: Settings) -> tuple[str | None
 
 
 def auth_configured(settings: Settings) -> bool:
-    has_auth_api = bool(_clean(settings.supabase_url) and _clean(settings.supabase_anon_key))
+    has_auth_api = bool(
+        _clean(settings.resolved_supabase_url)
+        and _clean(settings.resolved_supabase_anon_key)
+    )
     has_jwt = bool(_clean(settings.supabase_jwt_secret))
     return has_auth_api or has_jwt

@@ -67,6 +67,17 @@ def test_settings_reads_supabase_fields(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
     get_settings.cache_clear()
     s = Settings()
-    assert s.supabase_url == "https://example.supabase.co"
-    assert s.supabase_anon_key == "anon"
+    assert s.resolved_supabase_url == "https://example.supabase.co"
+    assert s.resolved_supabase_anon_key == "anon"
     assert s.supabase_jwt_secret == "secret"
+
+
+def test_settings_accepts_next_public_aliases(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+    monkeypatch.setenv("NEXT_PUBLIC_SUPABASE_URL", "https://alias.supabase.co")
+    monkeypatch.setenv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-alias")
+    get_settings.cache_clear()
+    s = Settings()
+    assert s.resolved_supabase_url == "https://alias.supabase.co"
+    assert s.resolved_supabase_anon_key == "anon-alias"
