@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pulse_flag
+    ports:
+      # Host 5433 avoids clashing with a local Postgres on 5432
+      - "5433:5432"
+    volumes:
+      - pulse_flag_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pulse_flag"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pulse_flag_pg:

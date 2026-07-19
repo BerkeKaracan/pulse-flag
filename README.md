@@ -1,36 +1,162 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pulse Flag
 
-## Getting Started
+B2B Feature Flag Management Platform.
 
-First, run the development server:
+- **Admin Dashboard** — Next.js (App Router) + Tailwind, Türkçe rehberli UI
+- **Delivery API** — FastAPI + PostgreSQL (`GET /evaluate`)
+- **Admin calls** — Next.js BFF (`/api/admin/*`); admin key tarayıcıya gitmez
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Sistem nasıl çalışır?
+
+```text
+Admin Panel  →  Project + Flag + Rule kaydeder
+SaaS Engine  →  GET /evaluate?key=...&tenant_id=...
+Pulse Flag   →  { "enabled": true|false }
+SaaS Engine  →  özelliği açar / kapar
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Kavram | Anlam |
+| --- | --- |
+| **Project** | Çağıran ürün (örn. SaaS Engine) + delivery `api_key` |
+| **FeatureFlag** | Sabit `key` (örn. `ai.canvas_generator`) |
+| **Rule** | Hangi `tenant_id` / `tier` için açık |
+| **Evaluate** | Motorun tek sorduğu endpoint |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Klasör yapısı
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```text
+pulse-flag/
+├── app/
+│   ├── (dashboard)/projects/...   # Admin UI
+│   └── api/
+│       ├── admin/[...path]/       # BFF → FastAPI /admin/*
+│       └── evaluate/              # BFF → FastAPI /evaluate
+├── components/
+├── lib/api.ts
+├── backend/
+│   ├── app/
+│   ├── Dockerfile
+│   └── railway.toml
+└── docker-compose.yml
+```
 
-## Learn More
+## Yerel geliştirme
 
-To learn more about Next.js, take a look at the following resources:
+### 1. Postgres
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+docker compose up -d
+# host port: 5433
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 2. FastAPI
 
-## Deploy on Vercel
+```bash
+cd backend
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+uvicorn app.main:app --reload --port 8002
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Health: `http://127.0.0.1:8002/health`  
+Docs: `http://127.0.0.1:8002/docs`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 3. Admin UI
+
+```bash
+copy .env.example .env.local
+npm install
+npm run dev
+```
+
+`.env.local` örneği:
+
+```env
+NEXT_PUBLIC_APP_URL=http://localhost:3001
+FEATURE_FLAGS_API_URL=http://127.0.0.1:8002
+FEATURE_FLAGS_ADMIN_API_KEY=dev-feature-flags-api-key
+```
+
+Panel: `http://localhost:3001/projects`
+
+### Panel akışı (smoke)
+
+1. **Yeni project** → SaaS Engine  
+2. **api_key**’i kopyala  
+3. **Flag oluştur** → `ai.canvas_generator`  
+4. **Rule ekle** → kendi `tenant_id`  
+5. **Canlı test** → `{ "enabled": true }` gör  
+
+## SaaS Engine entegrasyonu
+
+```http
+GET https://<API_HOST>/evaluate?key=ai.canvas_generator&tenant_id=<WORKSPACE_UUID>
+Authorization: Bearer <PROJECT_API_KEY>
+```
+
+Opsiyonel: `&tier=pro`
+
+Cevap her zaman:
+
+```json
+{ "enabled": true }
+```
+
+## Canlıya alma (Vercel + Railway)
+
+### A) Railway — Postgres + FastAPI
+
+1. Railway’de yeni proje oluştur.  
+2. **PostgreSQL** ekle.  
+3. Backend service ekle; root directory: `backend` (Dockerfile kullanır).  
+4. Env değişkenleri:
+
+| Key | Value |
+| --- | --- |
+| `DATABASE_URL` | Railway Postgres URL (`postgresql+psycopg://...` — dialect `psycopg` olmalı) |
+| `FEATURE_FLAGS_API_KEY` | Güçlü rastgele secret |
+| `CORS_ORIGINS` | `https://<your-admin>.vercel.app` |
+
+5. Healthcheck path: `/health` (`railway.toml` zaten ayarlı).  
+6. Public URL’yi not et → örn. `https://pulse-flag-api.up.railway.app`
+
+> `DATABASE_URL` Railway’den `postgres://` gelirse başına `postgresql+psycopg://` olacak şekilde düzenle veya connection string’i dönüştür.
+
+### B) Vercel — Admin Next.js
+
+1. Repo’yu Vercel’e import et (root = monorepo kökü).  
+2. Env:
+
+| Key | Value |
+| --- | --- |
+| `NEXT_PUBLIC_APP_URL` | `https://<your-admin>.vercel.app` |
+| `FEATURE_FLAGS_API_URL` | Railway API URL |
+| `FEATURE_FLAGS_ADMIN_API_KEY` | Railway’deki `FEATURE_FLAGS_API_KEY` ile **aynı** |
+
+3. Deploy.  
+4. Railway `CORS_ORIGINS` içine Vercel URL’yi ekle (direkt tarayıcı denemeleri için).
+
+### C) Canlı smoke test
+
+1. `https://<admin>/projects` → project / flag / rule kur  
+2. Flag sayfasındaki **Canlı test** ile doğrula  
+3. SaaS Engine production env:
+
+```env
+FEATURE_FLAGS_BASE_URL=https://<railway-api>
+FEATURE_FLAGS_API_KEY=<project_delivery_api_key>
+```
+
+## Güvenlik notları
+
+- Admin key yalnızca sunucuda: `FEATURE_FLAGS_ADMIN_API_KEY` (`NEXT_PUBLIC_` yok).  
+- Delivery `api_key` proje bazlıdır; SaaS Engine secret’ıdır.  
+- Login/SSO sonraki sprint.  
+- Alembic migrations sonraki sprint (`create_all` şimdilik bootstrap).
+
+## Port notları (Windows)
+
+- Yerel Postgres çakışması varsa Compose **5433** kullanır.  
+- `8000` / `8001` doluysa API’yi `8002` ile çalıştır; `.env.local` içindeki `FEATURE_FLAGS_API_URL` ile eşleştir.
