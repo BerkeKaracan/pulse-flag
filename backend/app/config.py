@@ -65,7 +65,10 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5433/pulse_flag"
     feature_flags_api_key: str | None = None
-    # Supabase JWT Secret (Dashboard → Settings → API → JWT Secret). Used to verify user tokens.
+    # Supabase project URL + anon key — preferred for verifying user access tokens via Auth API.
+    supabase_url: str | None = None
+    supabase_anon_key: str | None = None
+    # Legacy HS256 JWT Secret (Dashboard → Settings → API). Optional if URL+anon are set.
     supabase_jwt_secret: str | None = None
     # development | production
     app_env: str = "development"

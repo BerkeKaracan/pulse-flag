@@ -153,7 +153,9 @@ Unknown or inactive flags fail closed (`enabled: false`).
 | --- | --- |
 | `DATABASE_URL` | Supabase **Session pooler** URI (`…@…pooler.supabase.com:5432/postgres?sslmode=require`), scheme `postgresql+psycopg://` |
 | `FEATURE_FLAGS_API_KEY` | Long random secret (`openssl rand -hex 32`) |
-| `SUPABASE_JWT_SECRET` | Supabase → Settings → API → JWT Secret |
+| `SUPABASE_URL` | Same Supabase project URL as the admin app |
+| `SUPABASE_ANON_KEY` | Same anon key as the admin app (verifies user JWTs via Auth API) |
+| `SUPABASE_JWT_SECRET` | Optional legacy HS256 secret |
 | `APP_ENV` | `production` |
 | `CORS_ORIGINS` | Exact admin origin, e.g. `https://your-admin.vercel.app` |
 

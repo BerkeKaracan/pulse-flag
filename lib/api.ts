@@ -56,14 +56,16 @@ function friendlyError(status: number, body: string): string {
   ) {
     return "Upstream API unreachable. Check FEATURE_FLAGS_API_URL and that FastAPI is running.";
   }
-  if (status === 401) {
-    return "Unauthorized. Sign in again.";
-  }
   try {
     const parsed = JSON.parse(body) as { detail?: unknown };
-    if (typeof parsed.detail === "string") return parsed.detail;
+    if (typeof parsed.detail === "string" && parsed.detail.trim()) {
+      return parsed.detail;
+    }
   } catch {
     // keep raw body
+  }
+  if (status === 401) {
+    return "Unauthorized. Sign in again.";
   }
   return body || `Request failed (${status})`;
 }

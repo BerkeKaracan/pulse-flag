@@ -22,9 +22,10 @@ Authorization: Bearer <PROJECT_DELIVERY_API_KEY>
 All `/admin/*` routes require **both**:
 
 1. `Authorization: Bearer <FEATURE_FLAGS_API_KEY>` — service key (BFF only)
-2. `X-Supabase-Access-Token: <user access JWT>` — verified with `SUPABASE_JWT_SECRET`
+2. `X-Supabase-Access-Token: <user access JWT>` — verified via Supabase Auth `/user`
+   (preferred: `SUPABASE_URL` + `SUPABASE_ANON_KEY`) or JWT secret / JWKS
 
-User id is taken from the JWT `sub` claim. Spoofable `X-User-Id` is **not** accepted.
+User id comes from the verified token. Spoofable `X-User-Id` is **not** accepted.
 
 Projects are scoped by `user_id`. Cross-tenant access returns `404`.
 

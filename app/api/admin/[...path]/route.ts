@@ -19,15 +19,31 @@ function isSafePathSegment(segment: string): boolean {
 
 async function proxy(request: NextRequest, context: RouteContext) {
   const supabase = await createClient();
+
+  // getUser() validates the session with Supabase Auth (preferred on the server).
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return NextResponse.json(
+      { detail: "Unauthorized — sign in again" },
+      { status: 401 },
+    );
+  }
+
   const {
     data: { session },
   } = await supabase.auth.getSession();
-
-  if (!user || !session?.access_token) {
-    return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+  const accessToken = session?.access_token;
+  if (!accessToken) {
+    return NextResponse.json(
+      {
+        detail:
+          "No access token in session. Sign out and sign in again so cookies refresh.",
+      },
+      { status: 401 },
+    );
   }
 
   const adminKey = getFeatureFlagsAdminApiKey();
@@ -46,12 +62,11 @@ async function proxy(request: NextRequest, context: RouteContext) {
   const apiUrl = getFeatureFlagsApiUrl();
   const target = `${apiUrl}/admin/${path.join("/")}${request.nextUrl.search}`;
 
-  // Service key + verified-on-API user JWT. Never send spoofable X-User-Id.
   const headers = new Headers();
   const contentType = request.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
   headers.set("authorization", `Bearer ${adminKey}`);
-  headers.set("X-Supabase-Access-Token", session.access_token);
+  headers.set("X-Supabase-Access-Token", accessToken);
 
   let body: ArrayBuffer | undefined;
   if (request.method !== "GET" && request.method !== "HEAD") {

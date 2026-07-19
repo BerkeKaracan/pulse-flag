@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import uuid
 
-import jwt
 from fastapi import Depends, Header, HTTPException, status
-from jwt import InvalidTokenError
 from sqlalchemy.orm import Session
 
+from app.auth.supabase import auth_configured, resolve_supabase_user_id
 from app.config import get_settings
 from app.database import get_db
 from app.models import Project
@@ -74,16 +73,18 @@ def require_supabase_user(
     ),
 ) -> str:
     """
-    Verify the caller's Supabase access token and return auth.users.id (JWT sub).
+    Verify the caller's Supabase access token and return auth.users.id.
 
-    Identity is never taken from X-User-Id — that header is ignored.
+    Prefers Auth API / JWKS so new Supabase signing keys work; JWT secret is fallback.
     """
     settings = get_settings()
-    secret = (settings.supabase_jwt_secret or "").strip()
-    if not secret:
+    if not auth_configured(settings):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="SUPABASE_JWT_SECRET is not configured",
+            detail=(
+                "Supabase auth is not configured. Set SUPABASE_URL + SUPABASE_ANON_KEY "
+                "(recommended) and/or SUPABASE_JWT_SECRET on the API."
+            ),
         )
 
     token = _extract_bearer(x_supabase_access_token)
@@ -93,26 +94,13 @@ def require_supabase_user(
             detail="Missing X-Supabase-Access-Token",
         )
 
-    try:
-        payload = jwt.decode(
-            token,
-            secret,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
-    except InvalidTokenError as exc:
+    user_id = resolve_supabase_user_id(token, settings)
+    if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired Supabase access token",
-        ) from exc
-
-    user_id = payload.get("sub")
-    if not isinstance(user_id, str) or not user_id.strip():
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Supabase token missing subject",
         )
-    return user_id.strip()
+    return user_id
 
 
 def get_owned_project(

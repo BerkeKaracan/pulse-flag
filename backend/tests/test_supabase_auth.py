@@ -5,6 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.api.deps import require_supabase_user
+from app.auth.supabase import resolve_supabase_user_id
 from app.config import Settings, get_settings
 
 
@@ -15,11 +16,13 @@ def _clear_settings_cache():
     get_settings.cache_clear()
 
 
-def test_require_supabase_user_accepts_valid_token(monkeypatch: pytest.MonkeyPatch):
-    secret = "test-supabase-jwt-secret-value"
+def test_resolve_via_jwt_secret(monkeypatch: pytest.MonkeyPatch):
+    secret = "x" * 32
     monkeypatch.setenv("SUPABASE_JWT_SECRET", secret)
-    monkeypatch.setenv("FEATURE_FLAGS_API_KEY", "dev-key")
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
     get_settings.cache_clear()
+    settings = get_settings()
 
     token = jwt.encode(
         {
@@ -32,13 +35,13 @@ def test_require_supabase_user_accepts_valid_token(monkeypatch: pytest.MonkeyPat
         algorithm="HS256",
     )
 
-    user_id = require_supabase_user(x_supabase_access_token=f"Bearer {token}")
-    assert user_id == "user-abc-123"
+    assert resolve_supabase_user_id(token, settings) == "user-abc-123"
 
 
 def test_require_supabase_user_rejects_bad_token(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("SUPABASE_JWT_SECRET", "correct-secret")
-    monkeypatch.setenv("FEATURE_FLAGS_API_KEY", "dev-key")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", "x" * 32)
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
     get_settings.cache_clear()
 
     token = jwt.encode(
@@ -47,7 +50,7 @@ def test_require_supabase_user_rejects_bad_token(monkeypatch: pytest.MonkeyPatch
             "aud": "authenticated",
             "exp": int(time.time()) + 3600,
         },
-        "wrong-secret",
+        "y" * 32,
         algorithm="HS256",
     )
 
@@ -56,7 +59,12 @@ def test_require_supabase_user_rejects_bad_token(monkeypatch: pytest.MonkeyPatch
     assert exc.value.status_code == 401
 
 
-def test_settings_reads_supabase_jwt_secret(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("SUPABASE_JWT_SECRET", "from-env")
+def test_settings_reads_supabase_fields(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "anon")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", "secret")
     get_settings.cache_clear()
-    assert Settings().supabase_jwt_secret == "from-env"
+    s = Settings()
+    assert s.supabase_url == "https://example.supabase.co"
+    assert s.supabase_anon_key == "anon"
+    assert s.supabase_jwt_secret == "secret"
