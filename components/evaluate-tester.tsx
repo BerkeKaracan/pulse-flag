@@ -77,7 +77,11 @@ export function EvaluateTester({ flagKey, apiKey }: Props) {
           />
         </div>
         <div className="flex items-end">
-          <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            loading={pending}
+            className="w-full sm:w-auto"
+          >
             {pending ? dict.evaluate.querying : dict.evaluate.submit}
           </Button>
         </div>

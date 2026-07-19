@@ -38,9 +38,9 @@ export default function NewProjectPage() {
       });
       router.push(`/projects/${project.id}`);
       router.refresh();
+      // Keep spinner until navigation completes.
     } catch (err) {
       setError(err instanceof Error ? err.message : dict.newProject.error);
-    } finally {
       setPending(false);
     }
   }
@@ -95,7 +95,7 @@ export default function NewProjectPage() {
           />
         </div>
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending}>
           {pending ? dict.common.saving : dict.newProject.submit}
         </Button>
       </form>

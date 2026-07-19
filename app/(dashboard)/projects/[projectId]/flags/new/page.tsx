@@ -36,9 +36,9 @@ export default function NewFlagPage() {
       });
       router.push(`/projects/${projectId}/flags/${flag.id}`);
       router.refresh();
+      // Keep spinner until navigation completes.
     } catch (err) {
       setError(err instanceof Error ? err.message : dict.newFlag.error);
-    } finally {
       setPending(false);
     }
   }
@@ -97,7 +97,7 @@ export default function NewFlagPage() {
           {dict.newFlag.defaultEnabled}
         </label>
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending}>
           {pending ? dict.common.creating : dict.newFlag.submit}
         </Button>
       </form>

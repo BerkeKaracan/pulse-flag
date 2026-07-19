@@ -28,8 +28,8 @@ export function DeleteRuleButton({ projectId, flagId, ruleId }: Props) {
   }
 
   return (
-    <Button variant="ghost" onClick={onDelete} disabled={pending}>
-      {pending ? "…" : dict.common.remove}
+    <Button variant="ghost" onClick={onDelete} loading={pending}>
+      {dict.common.remove}
     </Button>
   );
 }

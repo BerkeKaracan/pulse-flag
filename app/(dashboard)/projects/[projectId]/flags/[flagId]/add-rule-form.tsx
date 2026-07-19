@@ -126,7 +126,7 @@ export function AddRuleForm({ projectId, flagId }: Props) {
           <p className="text-sm text-red-600 sm:col-span-2">{error}</p>
         ) : null}
         <div className="sm:col-span-2">
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" loading={pending}>
             {pending ? dict.common.saving : dict.addRule.submit}
           </Button>
         </div>

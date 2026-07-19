@@ -69,19 +69,21 @@ export function LoginButtons({
         type="button"
         className="w-full"
         variant="secondary"
+        loading={pending === "google"}
         disabled={pending !== null}
         onClick={() => void signIn("google")}
       >
-        {pending === "google" ? "…" : googleLabel}
+        {pending === "google" ? "Redirecting…" : googleLabel}
       </Button>
       <Button
         type="button"
         className="w-full"
         variant="secondary"
+        loading={pending === "github"}
         disabled={pending !== null}
         onClick={() => void signIn("github")}
       >
-        {pending === "github" ? "…" : githubLabel}
+        {pending === "github" ? "Redirecting…" : githubLabel}
       </Button>
     </div>
   );

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { SignOutSubmit } from "@/components/sign-out-submit";
 import { createClient } from "@/lib/supabase/server";
 
 export function SignOutButton({ label }: { label: string }) {
@@ -12,9 +12,7 @@ export function SignOutButton({ label }: { label: string }) {
         redirect("/login");
       }}
     >
-      <Button type="submit" variant="ghost" className="h-8 px-2 text-sm font-medium">
-        {label}
-      </Button>
+      <SignOutSubmit label={label} />
     </form>
   );
 }
