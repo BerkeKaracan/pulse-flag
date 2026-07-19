@@ -11,7 +11,17 @@ type Props = {
 export default async function ProjectDetailPage({ params }: Props) {
   const { projectId } = await params;
   const { dict } = await getDictionary();
-  const project = await adminApi.getProject(projectId);
+  let project: Awaited<ReturnType<typeof adminApi.getProject>>;
+  try {
+    project = await adminApi.getProject(projectId);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to load project";
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        {message}
+      </div>
+    );
+  }
   const evaluateBase =
     process.env.NEXT_PUBLIC_EVALUATE_PUBLIC_URL ??
     process.env.FEATURE_FLAGS_API_URL ??

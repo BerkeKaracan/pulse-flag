@@ -1,5 +1,6 @@
 export type Project = {
   id: string;
+  user_id: string;
   name: string;
   slug: string;
   description: string | null;
@@ -41,13 +42,22 @@ function resolveAppOrigin(): string {
   if (typeof window !== "undefined") return "";
   return (
     process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://127.0.0.1:3001")
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://127.0.0.1:3001")
   );
 }
 
 function friendlyError(status: number, body: string): string {
-  if (status === 502 || body.includes("API'ye ulaşılamıyor")) {
-    return "API'ye ulaşılamıyor. FastAPI servisinin çalıştığından emin olun.";
+  if (
+    status === 502 ||
+    body.includes("Upstream API unreachable") ||
+    body.includes("API'ye ulaşılamıyor")
+  ) {
+    return "Upstream API unreachable. Check FEATURE_FLAGS_API_URL and that FastAPI is running.";
+  }
+  if (status === 401) {
+    return "Unauthorized. Sign in again.";
   }
   try {
     const parsed = JSON.parse(body) as { detail?: unknown };
@@ -55,7 +65,16 @@ function friendlyError(status: number, body: string): string {
   } catch {
     // keep raw body
   }
-  return body || `İstek başarısız (${status})`;
+  return body || `Request failed (${status})`;
+}
+
+async function cookieHeaderForServer(): Promise<string | undefined> {
+  if (typeof window !== "undefined") return undefined;
+  // Server Components must forward the browser session to the BFF.
+  const { cookies } = await import("next/headers");
+  const jar = await cookies();
+  const parts = jar.getAll().map((c) => `${c.name}=${c.value}`);
+  return parts.length > 0 ? parts.join("; ") : undefined;
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -64,6 +83,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const headersInit = new Headers(init?.headers);
   if (init?.body && !headersInit.has("Content-Type")) {
     headersInit.set("Content-Type", "application/json");
+  }
+
+  const cookieHeader = await cookieHeaderForServer();
+  if (cookieHeader && !headersInit.has("Cookie")) {
+    headersInit.set("Cookie", cookieHeader);
   }
 
   let res: Response;
@@ -75,7 +99,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     });
   } catch {
     throw new Error(
-      "API'ye ulaşılamıyor. FastAPI servisinin çalıştığından emin olun.",
+      "Upstream API unreachable. Check FEATURE_FLAGS_API_URL and that FastAPI is running.",
     );
   }
 
@@ -108,6 +132,11 @@ export async function evaluateFlag(input: {
     headersInit.set("Authorization", `Bearer ${input.apiKey}`);
   }
 
+  const cookieHeader = await cookieHeaderForServer();
+  if (cookieHeader) {
+    headersInit.set("Cookie", cookieHeader);
+  }
+
   let res: Response;
   try {
     res = await fetch(`${resolveAppOrigin()}/api/evaluate?${params}`, {
@@ -116,7 +145,7 @@ export async function evaluateFlag(input: {
     });
   } catch {
     throw new Error(
-      "API'ye ulaşılamıyor. FastAPI servisinin çalıştığından emin olun.",
+      "Upstream API unreachable. Check FEATURE_FLAGS_API_URL and that FastAPI is running.",
     );
   }
 
