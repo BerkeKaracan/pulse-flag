@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Source_Serif_4 } from "next/font/google";
+import { DM_Sans, Fraunces } from "next/font/google";
+import { getLocale } from "@/lib/i18n/get-dictionary";
 import "./globals.css";
 
-const display = Source_Serif_4({
+const display = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
 });
 
-const mono = IBM_Plex_Mono({
-  variable: "--font-mono",
+const sans = DM_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -19,17 +20,19 @@ export const metadata: Metadata = {
   description: "Feature Flag Management Platform",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
     <html
-      lang="en"
-      className={`${display.variable} ${mono.variable} h-full antialiased`}
+      lang={locale}
+      className={`${display.variable} ${sans.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans text-zinc-900">
+      <body className="min-h-full flex flex-col font-[family-name:var(--font-sans)] text-zinc-900">
         {children}
       </body>
     </html>

@@ -19,8 +19,9 @@ class TargetingRule(Base):
     Determines whether a flag is enabled for a request.
 
     Matching semantics (all specified constraints must pass):
-    - allowed_tenant_ids empty  => any tenant
-    - allowed_tiers empty       => any tier
+    - both allowlists empty     => match nothing
+    - allowed_tenant_ids empty  => any tenant (when tiers are set)
+    - allowed_tiers empty       => any tier (when tenants are set)
     First matching rule by ascending priority wins.
     """
 

@@ -14,19 +14,52 @@ def resolve_project_from_api_key(db: Session, api_key: str | None) -> Project | 
     return db.scalar(select(Project).where(Project.api_key == api_key))
 
 
+def normalize_tier(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    tier = raw.strip().lower()
+    if not tier:
+        return None
+    if tier == "free":
+        return "basic"
+    return tier
+
+
+def normalize_tiers(raw: list[str] | None) -> list[str]:
+    out: list[str] = []
+    for item in raw or []:
+        normalized = normalize_tier(item)
+        if normalized and normalized not in out:
+            out.append(normalized)
+    return out
+
+
 def rule_matches(rule: TargetingRule, tenant_id: uuid.UUID, tier: str | None) -> bool:
-    tenants = rule.allowed_tenant_ids or []
-    tiers = rule.allowed_tiers or []
+    """
+    Matching semantics:
+    - Both allowlists empty → match nothing (no silent "all")
+    - Empty tenant list + non-empty tiers → any tenant with those tiers
+    - Non-empty tenants + empty tiers → listed tenants, any tier
+    - Both set → intersection
+    Tiers are compared case-insensitively (free → basic).
+    """
+    tenants = list(rule.allowed_tenant_ids or [])
+    tiers = normalize_tiers(rule.allowed_tiers)
 
-    tenant_ok = (not tenants) or (tenant_id in tenants)
-    if not tenant_ok:
+    if not tenants and not tiers:
         return False
 
-    if not tiers:
-        return True
-    if tier is None:
+    if tenants and tenant_id not in tenants:
         return False
-    return tier in tiers
+
+    if tiers:
+        normalized = normalize_tier(tier)
+        if normalized is None:
+            return False
+        return normalized in tiers
+
+    # Tenant-only rule: any tier for those tenants.
+    return True
 
 
 def evaluate_flag(

@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useDictionary } from "@/components/locale-provider";
 
 type Props = {
   value: string;
   label?: string;
 };
 
-export function CopyButton({ value, label = "Kopyala" }: Props) {
+export function CopyButton({ value, label }: Props) {
+  const { dict } = useDictionary();
   const [copied, setCopied] = useState(false);
 
   async function onCopy() {
@@ -19,7 +21,7 @@ export function CopyButton({ value, label = "Kopyala" }: Props) {
 
   return (
     <Button type="button" variant="secondary" onClick={onCopy}>
-      {copied ? "Kopyalandı" : label}
+      {copied ? dict.common.copied : label ?? dict.common.copy}
     </Button>
   );
 }

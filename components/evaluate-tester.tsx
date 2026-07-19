@@ -5,6 +5,7 @@ import { evaluateFlag } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useDictionary } from "@/components/locale-provider";
 
 type Props = {
   flagKey: string;
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export function EvaluateTester({ flagKey, apiKey }: Props) {
+  const { dict } = useDictionary();
   const [tenantId, setTenantId] = useState("");
   const [tier, setTier] = useState("");
   const [result, setResult] = useState<boolean | null>(null);
@@ -32,28 +34,30 @@ export function EvaluateTester({ flagKey, apiKey }: Props) {
       });
       setResult(data.enabled);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Test başarısız");
+      setError(err instanceof Error ? err.message : dict.evaluate.error);
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-zinc-200 bg-white/80 p-5">
+    <section className="space-y-4 rounded-2xl border border-zinc-200 bg-white/85 p-5 shadow-sm">
       <div>
-        <h2 className="text-lg font-medium text-zinc-900">Canlı test</h2>
+        <h2 className="text-lg font-semibold text-zinc-900">
+          {dict.evaluate.title}
+        </h2>
         <p className="mt-1 text-sm text-zinc-600">
-          SaaS Engine’in soracağı çağrıyı burada dene. Sonuç her zaman{" "}
+          {dict.evaluate.subtitle}{" "}
           <code className="rounded bg-zinc-100 px-1 text-xs">
             {'{ "enabled": true|false }'}
-          </code>{" "}
-          formatındadır.
+          </code>
+          .
         </p>
       </div>
 
       <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="test-tenant">tenant_id (workspace UUID)</Label>
+          <Label htmlFor="test-tenant">{dict.evaluate.tenant}</Label>
           <Input
             id="test-tenant"
             className="font-mono text-xs"
@@ -64,7 +68,7 @@ export function EvaluateTester({ flagKey, apiKey }: Props) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="test-tier">tier (opsiyonel)</Label>
+          <Label htmlFor="test-tier">{dict.evaluate.tier}</Label>
           <Input
             id="test-tier"
             placeholder="pro"
@@ -74,7 +78,7 @@ export function EvaluateTester({ flagKey, apiKey }: Props) {
         </div>
         <div className="flex items-end">
           <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-            {pending ? "Sorgulanıyor…" : "Evaluate et"}
+            {pending ? dict.evaluate.querying : dict.evaluate.submit}
           </Button>
         </div>
       </form>
@@ -85,8 +89,8 @@ export function EvaluateTester({ flagKey, apiKey }: Props) {
         <div
           className={
             result
-              ? "rounded-md bg-teal-50 px-3 py-2 font-mono text-sm text-teal-900"
-              : "rounded-md bg-zinc-100 px-3 py-2 font-mono text-sm text-zinc-700"
+              ? "rounded-lg bg-teal-50 px-3 py-2 font-mono text-sm text-teal-900"
+              : "rounded-lg bg-zinc-100 px-3 py-2 font-mono text-sm text-zinc-700"
           }
         >
           {`{ "enabled": ${result} }`}

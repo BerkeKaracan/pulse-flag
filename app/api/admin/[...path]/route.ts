@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { isAdminEmail } from "@/lib/admin-emails";
 import {
   getFeatureFlagsAdminApiKey,
   getFeatureFlagsApiUrl,
@@ -9,6 +11,11 @@ type RouteContext = {
 };
 
 async function proxy(request: NextRequest, context: RouteContext) {
+  const session = await auth();
+  if (!isAdminEmail(session?.user?.email)) {
+    return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+  }
+
   const { path } = await context.params;
   const apiUrl = getFeatureFlagsApiUrl();
   const adminKey = getFeatureFlagsAdminApiKey();

@@ -26,11 +26,15 @@ SaaS Engine  →  özelliği açar / kapar
 
 ```text
 pulse-flag/
+├── auth.ts                        # Auth.js (Google + GitHub + allowlist)
+├── middleware.ts                  # Session gate for dashboard + admin BFF
 ├── app/
+│   ├── login/                     # OAuth sign-in
 │   ├── (dashboard)/projects/...   # Admin UI
 │   └── api/
-│       ├── admin/[...path]/       # BFF → FastAPI /admin/*
-│       └── evaluate/              # BFF → FastAPI /evaluate
+│       ├── auth/[...nextauth]/    # Auth.js handlers
+│       ├── admin/[...path]/       # BFF → FastAPI /admin/* (session required)
+│       └── evaluate/              # BFF → FastAPI /evaluate (public)
 ├── components/
 ├── lib/api.ts
 ├── backend/
@@ -75,11 +79,23 @@ npm run dev
 
 ```env
 NEXT_PUBLIC_APP_URL=http://localhost:3001
+AUTH_SECRET=generate-a-long-random-string
+AUTH_URL=http://localhost:3001
+AUTH_GOOGLE_ID=
+AUTH_GOOGLE_SECRET=
+AUTH_GITHUB_ID=
+AUTH_GITHUB_SECRET=
+ADMIN_EMAILS=you@gmail.com
 FEATURE_FLAGS_API_URL=http://127.0.0.1:8002
 FEATURE_FLAGS_ADMIN_API_KEY=dev-feature-flags-api-key
 ```
 
-Panel: `http://localhost:3001/projects`
+OAuth callback URL’leri (Google Cloud Console / GitHub OAuth App):
+
+- `http://localhost:3001/api/auth/callback/google`
+- `http://localhost:3001/api/auth/callback/github`
+
+Panel: `http://localhost:3001/projects` (oturum yoksa `/login`)
 
 ### Panel akışı (smoke)
 
@@ -132,8 +148,18 @@ Cevap her zaman:
 | Key | Value |
 | --- | --- |
 | `NEXT_PUBLIC_APP_URL` | `https://<your-admin>.vercel.app` |
+| `AUTH_SECRET` | Güçlü rastgele secret (`openssl rand -base64 32`) |
+| `AUTH_URL` | `https://<your-admin>.vercel.app` |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth client |
+| `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth App |
+| `ADMIN_EMAILS` | Virgülle ayrılmış yönetici e-postaları |
 | `FEATURE_FLAGS_API_URL` | Railway API URL |
 | `FEATURE_FLAGS_ADMIN_API_KEY` | Railway’deki `FEATURE_FLAGS_API_KEY` ile **aynı** |
+
+Production OAuth callbacks:
+
+- `https://<your-admin>.vercel.app/api/auth/callback/google`
+- `https://<your-admin>.vercel.app/api/auth/callback/github`
 
 3. Deploy.  
 4. Railway `CORS_ORIGINS` içine Vercel URL’yi ekle (direkt tarayıcı denemeleri için).
@@ -151,9 +177,13 @@ FEATURE_FLAGS_API_KEY=<project_delivery_api_key>
 
 ## Güvenlik notları
 
+- Admin panel: **yalnızca Google / GitHub** (Auth.js). Email/şifre yok.  
+- Giriş `ADMIN_EMAILS` allowlist’ine bağlıdır; listede olmayan OAuth hesabı reddedilir.  
+- Middleware + BFF `auth()`: `/projects/*` ve `/api/admin/*` oturum ister.  
+- `GET /evaluate` (ve `/api/evaluate`) login gerektirmez — ürün API’leri bozulmaz.  
 - Admin key yalnızca sunucuda: `FEATURE_FLAGS_ADMIN_API_KEY` (`NEXT_PUBLIC_` yok).  
 - Delivery `api_key` proje bazlıdır; SaaS Engine secret’ıdır.  
-- Login/SSO sonraki sprint.  
+- FastAPI `/admin/*` hâlâ admin API key ister; Next BFF key’i basmadan önce session zorunlu.  
 - Alembic migrations sonraki sprint (`create_all` şimdilik bootstrap).
 
 ## Port notları (Windows)

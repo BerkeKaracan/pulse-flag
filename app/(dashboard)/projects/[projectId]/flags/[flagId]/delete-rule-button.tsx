@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { adminApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useDictionary } from "@/components/locale-provider";
 
 type Props = {
   projectId: string;
@@ -13,6 +14,7 @@ type Props = {
 
 export function DeleteRuleButton({ projectId, flagId, ruleId }: Props) {
   const router = useRouter();
+  const { dict } = useDictionary();
   const [pending, setPending] = useState(false);
 
   async function onDelete() {
@@ -27,7 +29,7 @@ export function DeleteRuleButton({ projectId, flagId, ruleId }: Props) {
 
   return (
     <Button variant="ghost" onClick={onDelete} disabled={pending}>
-      {pending ? "…" : "Kaldır"}
+      {pending ? "…" : dict.common.remove}
     </Button>
   );
 }
