@@ -1,4 +1,4 @@
-import { adminApi } from "@/lib/api";
+import { adminApi } from "@/lib/api.server";
 import { AddRuleForm } from "./add-rule-form";
 import { DeleteRuleButton } from "./delete-rule-button";
 import { EvaluateTester } from "@/components/evaluate-tester";

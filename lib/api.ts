@@ -38,16 +38,10 @@ export type EvaluateResult = {
   enabled: boolean;
 };
 
-function resolveAppOrigin(): string {
-  if (typeof window !== "undefined") return "";
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://127.0.0.1:3001")
-  );
-}
-
+/**
+ * Client-safe admin API (BFF only).
+ * Server Components should import from `@/lib/api.server` to skip the self-fetch hop.
+ */
 function friendlyError(status: number, body: string): string {
   if (
     status === 502 ||
@@ -70,25 +64,12 @@ function friendlyError(status: number, body: string): string {
   return body || `Request failed (${status})`;
 }
 
-async function cookieHeaderForServer(): Promise<string | undefined> {
-  if (typeof window !== "undefined") return undefined;
-  const { cookies } = await import("next/headers");
-  const jar = await cookies();
-  const parts = jar.getAll().map((c) => `${c.name}=${c.value}`);
-  return parts.length > 0 ? parts.join("; ") : undefined;
-}
-
-async function apiViaBff<T>(path: string, init?: RequestInit): Promise<T> {
-  const url = `${resolveAppOrigin()}/api/admin${path}`;
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const url = `/api/admin${path}`;
 
   const headersInit = new Headers(init?.headers);
   if (init?.body && !headersInit.has("Content-Type")) {
     headersInit.set("Content-Type", "application/json");
-  }
-
-  const cookieHeader = await cookieHeaderForServer();
-  if (cookieHeader && !headersInit.has("Cookie")) {
-    headersInit.set("Cookie", cookieHeader);
   }
 
   let res: Response;
@@ -116,27 +97,6 @@ async function apiViaBff<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  // Server Components: call FastAPI directly (skip Vercel self-fetch hop).
-  // Dynamic import keeps server-only deps out of the browser bundle.
-  if (typeof window === "undefined") {
-    const { AdminUpstreamError, adminUpstreamJson } = await import(
-      "@/lib/admin-upstream"
-    );
-    try {
-      return await adminUpstreamJson<T>(path, init);
-    } catch (err) {
-      if (err instanceof AdminUpstreamError) {
-        throw new Error(err.message);
-      }
-      throw err;
-    }
-  }
-
-  // Browser: go through the BFF so cookies stay on same origin.
-  return apiViaBff<T>(path, init);
-}
-
 export async function evaluateFlag(input: {
   key: string;
   tenantId: string;
@@ -154,15 +114,9 @@ export async function evaluateFlag(input: {
     headersInit.set("Authorization", `Bearer ${input.apiKey}`);
   }
 
-  const origin = typeof window === "undefined" ? resolveAppOrigin() : "";
-  if (typeof window === "undefined") {
-    const cookieHeader = await cookieHeaderForServer();
-    if (cookieHeader) headersInit.set("Cookie", cookieHeader);
-  }
-
   let res: Response;
   try {
-    res = await fetch(`${origin}/api/evaluate?${params}`, {
+    res = await fetch(`/api/evaluate?${params}`, {
       headers: headersInit,
       cache: "no-store",
     });

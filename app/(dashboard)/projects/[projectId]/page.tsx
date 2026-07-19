@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { adminApi } from "@/lib/api";
+import { adminApi } from "@/lib/api.server";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/copy-button";
 import { getDictionary } from "@/lib/i18n/get-dictionary";

@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { createClient } from "@/lib/supabase/server";
 
 const REFRESH_IF_EXPIRES_WITHIN_SEC = 60;
