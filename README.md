@@ -1,50 +1,73 @@
 # Pulse Flag
 
-B2B Feature Flag Management Platform.
+Multi-tenant **feature flag** platform for B2B products.
 
-- **Admin Dashboard** — Next.js (App Router) + Tailwind, Türkçe rehberli UI
-- **Delivery API** — FastAPI + PostgreSQL (`GET /evaluate`)
-- **Admin calls** — Next.js BFF (`/api/admin/*`); admin key tarayıcıya gitmez
-
-## Sistem nasıl çalışır?
+Sign in with Google or GitHub, create a project, define flags and targeting rules, then let your app ask a single delivery endpoint whether a feature is on for a given tenant.
 
 ```text
-Admin Panel  →  Project + Flag + Rule kaydeder
-SaaS Engine  →  GET /evaluate?key=...&tenant_id=...
-Pulse Flag   →  { "enabled": true|false }
-SaaS Engine  →  özelliği açar / kapar
+Admin UI (Next.js)  →  create project / flag / rule
+Your product API    →  GET /evaluate?key=...&tenant_id=...
+Pulse Flag API      →  { "enabled": true | false }
+Your product        →  turn the feature on or off
 ```
 
-| Kavram | Anlam |
+| Concept | Meaning |
 | --- | --- |
-| **Project** | Çağıran ürün (örn. SaaS Engine) + delivery `api_key` |
-| **FeatureFlag** | Sabit `key` (örn. `ai.canvas_generator`) |
-| **Rule** | Hangi `tenant_id` / `tier` için açık |
-| **Evaluate** | Motorun tek sorduğu endpoint |
+| **Project** | A consumer product (e.g. your SaaS) with its own delivery `api_key` |
+| **Feature flag** | Stable string key (e.g. `ai.canvas_generator`) |
+| **Rule** | Who gets the flag: `tenant_id` and/or plan `tier` allowlists |
+| **Evaluate** | The only call your product needs in production |
 
-## Klasör yapısı
+---
+
+## Stack
+
+| Layer | Tech |
+| --- | --- |
+| Admin UI | Next.js App Router, Supabase Auth (Google / GitHub) |
+| Delivery + admin API | FastAPI, SQLAlchemy, PostgreSQL (Supabase or local Docker) |
+| Trust boundary | Next.js BFF holds the platform admin key; browsers never see it |
 
 ```text
 pulse-flag/
-├── middleware.ts                  # Supabase session gate
-├── app/
-│   ├── login/                     # Google / GitHub via Supabase OAuth
-│   ├── (dashboard)/projects/...   # Multi-tenant admin UI
-│   └── api/
-│       ├── auth/callback/         # Supabase OAuth code exchange
-│       ├── admin/[...path]/       # BFF → FastAPI /admin/* (+ X-User-Id)
-│       └── evaluate/              # BFF → FastAPI /evaluate (public)
-├── lib/supabase/                  # browser + server + middleware clients
-├── components/
-├── lib/api.ts
-├── backend/
-│   ├── app/
-│   ├── Dockerfile
-│   └── railway.toml
-└── docker-compose.yml
+├── app/                  # Next.js admin + BFF
+├── lib/supabase/         # SSR Supabase clients
+├── middleware.ts         # Session gate
+├── backend/              # FastAPI service
+└── docker-compose.yml    # Local Postgres
 ```
 
-## Yerel geliştirme
+---
+
+## Security model (read this before deploying)
+
+Pulse Flag is designed so a **shared admin URL** is not enough to manage flags.
+
+### What protects what
+
+| Surface | Protection |
+| --- | --- |
+| Admin UI (`/projects`, …) | Supabase session (Google / GitHub OAuth) |
+| Next BFF `/api/admin/*` | Supabase session **and** server-side platform admin key |
+| FastAPI `/admin/*` | Platform `FEATURE_FLAGS_API_KEY` **and** `X-User-Id` ownership |
+| FastAPI `GET /evaluate` | **Project delivery** `api_key` only (not the platform admin key) |
+| Multi-tenant isolation | Each project stores `user_id` (Supabase user id); list/update/delete are scoped |
+
+### Hard rules
+
+1. **Never** put `FEATURE_FLAGS_ADMIN_API_KEY` / `FEATURE_FLAGS_API_KEY` in `NEXT_PUBLIC_*` env vars.
+2. Treat the FastAPI admin API as **private infrastructure**. Prefer calling it only from the Next.js BFF. If the API is on a public URL, anyone who steals the platform admin key can spoof `X-User-Id` — keep that key strong and rotate it if leaked.
+3. Product backends call **`GET /evaluate` with the project delivery key**, not the platform admin key.
+4. Empty targeting lists mean **match nobody** (no silent “enable for everyone”).
+5. In production set `APP_ENV=production` on the API (hides `/docs` and disables the loose CORS regex).
+
+### OAuth note
+
+Any Google/GitHub account that can complete Supabase Auth can use the admin UI and own their own projects. There is **no email allowlist**. If you need a private console, restrict providers / users in the Supabase dashboard (or add an allowlist later).
+
+---
+
+## Quick start (local)
 
 ### 1. Postgres
 
@@ -58,127 +81,108 @@ docker compose up -d
 ```bash
 cd backend
 python -m venv .venv
-.\.venv\Scripts\activate
+# Windows: .\.venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-copy .env.example .env
+cp .env.example .env   # Windows: copy .env.example .env
 uvicorn app.main:app --reload --port 8002
 ```
 
-Health: `http://127.0.0.1:8002/health`  
-Docs: `http://127.0.0.1:8002/docs`
+- Health: `http://127.0.0.1:8002/health`
+- Docs (dev only): `http://127.0.0.1:8002/docs`
 
 ### 3. Admin UI
 
 ```bash
-copy .env.example .env.local
+cp .env.example .env.local   # Windows: copy .env.example .env.local
 npm install
-npm run dev
+npm run dev -- --port 3001
 ```
 
-`.env.local` örneği:
+Example `.env.local`:
 
 ```env
 NEXT_PUBLIC_APP_URL=http://localhost:3001
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 FEATURE_FLAGS_API_URL=http://127.0.0.1:8002
-FEATURE_FLAGS_ADMIN_API_KEY=dev-feature-flags-api-key
+FEATURE_FLAGS_ADMIN_API_KEY=change-me-to-a-long-random-secret
 ```
 
-Supabase Dashboard → Authentication → URL configuration:
+`FEATURE_FLAGS_ADMIN_API_KEY` must match backend `FEATURE_FLAGS_API_KEY`.
 
+**Supabase Auth**
+
+- Enable Google and/or GitHub providers
 - Site URL: `http://localhost:3001`
 - Redirect URL: `http://localhost:3001/api/auth/callback`
 
-Google / GitHub provider’larını Supabase Auth içinde etkinleştir.
+Open `http://localhost:3001/login`.
 
-Panel: `http://localhost:3001/projects` (oturum yoksa `/login`)
+### Smoke path
 
-### Panel akışı (smoke)
+1. Create a **project** → copy the delivery `api_key`
+2. Create a **flag** (e.g. `ai.canvas_generator`)
+3. Add a **rule** for your `tenant_id` (and optional `tier`)
+4. Use **Live test** on the flag page → `{ "enabled": true }`
 
-1. **Yeni project** → SaaS Engine  
-2. **api_key**’i kopyala  
-3. **Flag oluştur** → `ai.canvas_generator`  
-4. **Rule ekle** → kendi `tenant_id`  
-5. **Canlı test** → `{ "enabled": true }` gör  
+---
 
-## SaaS Engine entegrasyonu
+## Delivery API (for your product)
 
 ```http
-GET https://<API_HOST>/evaluate?key=ai.canvas_generator&tenant_id=<WORKSPACE_UUID>
-Authorization: Bearer <PROJECT_API_KEY>
+GET /evaluate?key=ai.canvas_generator&tenant_id=<WORKSPACE_UUID>&tier=pro
+Authorization: Bearer <PROJECT_DELIVERY_API_KEY>
 ```
 
-Opsiyonel: `&tier=pro`
-
-Cevap her zaman:
+Response is always:
 
 ```json
 { "enabled": true }
 ```
 
-## Canlıya alma (Vercel + Render + Supabase)
+Unknown or inactive flags fail closed (`enabled: false`).
 
-### A) Render — FastAPI (DB = Supabase Postgres)
+---
 
-1. Render’da Web Service; root directory: `backend` (Dockerfile).  
-2. Env:
+## Production deploy
 
-| Key | Value |
+### A) API — Render (or similar) + Supabase Postgres
+
+| Env | Value |
 | --- | --- |
-| `DATABASE_URL` | Supabase **Session pooler** URI (`postgresql+psycopg://...@...pooler.supabase.com:5432/postgres?sslmode=require`) |
-| `FEATURE_FLAGS_API_KEY` | Güçlü rastgele secret |
-| `CORS_ORIGINS` | `https://<your-admin>.vercel.app` |
+| `DATABASE_URL` | Supabase **Session pooler** URI (`…@…pooler.supabase.com:5432/postgres?sslmode=require`), scheme `postgresql+psycopg://` |
+| `FEATURE_FLAGS_API_KEY` | Long random secret (`openssl rand -hex 32`) |
+| `APP_ENV` | `production` |
+| `CORS_ORIGINS` | Exact admin origin, e.g. `https://your-admin.vercel.app` |
 
-3. Healthcheck: `/health`  
-4. Public API URL’yi not et.
+Root directory: `backend`. Health check: `/health`.
 
-> Render çoğu zaman **IPv6 outbound açamaz**. Supabase direct host (`db.<ref>.supabase.co`) IPv6’ya çözülürse startup `Network is unreachable` ile düşer. Dashboard → Database → Connect → **Session pooler** kullan.
+> **IPv6:** Many hosts cannot dial Supabase’s direct `db.*.supabase.co` address. Use the **Session pooler** connection string or you will see `Network is unreachable` on startup.
 
-### B) Vercel — Admin Next.js
+### B) Admin UI — Vercel
 
-1. Repo’yu Vercel’e import et (root = monorepo kökü).  
-2. Env:
-
-| Key | Value |
+| Env | Value |
 | --- | --- |
-| `NEXT_PUBLIC_APP_URL` | `https://<your-admin>.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | `https://your-admin.vercel.app` |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
-| `FEATURE_FLAGS_API_URL` | Render API URL |
-| `FEATURE_FLAGS_ADMIN_API_KEY` | Render’daki `FEATURE_FLAGS_API_KEY` ile **aynı** |
+| `FEATURE_FLAGS_API_URL` | Public API base URL |
+| `FEATURE_FLAGS_ADMIN_API_KEY` | Same value as API `FEATURE_FLAGS_API_KEY` |
 
-Supabase redirect URL (production):
+Supabase redirect URL:
 
-- `https://<your-admin>.vercel.app/api/auth/callback`
+`https://your-admin.vercel.app/api/auth/callback`
 
-3. Deploy.  
-4. Render `CORS_ORIGINS` içine Vercel URL’yi ekle.
-
-### C) Canlı smoke test
-
-1. `https://<admin>/projects` → project / flag / rule kur  
-2. Flag sayfasındaki **Canlı test** ile doğrula  
-3. SaaS Engine production env:
+### C) Wire your product
 
 ```env
-FEATURE_FLAGS_BASE_URL=https://<railway-api>
+FEATURE_FLAGS_URL=https://your-api.onrender.com
 FEATURE_FLAGS_API_KEY=<project_delivery_api_key>
 ```
 
-## Güvenlik notları
+---
 
-- Admin panel: **Supabase Auth** ile Google / GitHub. Email/şifre yok.  
-- Google veya GitHub ile giren her kullanıcı yetkilidir (allowlist yok).  
-- Middleware + BFF: `/projects/*` ve `/api/admin/*` aktif Supabase session ister.  
-- BFF, FastAPI’ye `X-User-Id: <supabase user.id>` ekler (multi-tenant hazırlık).  
-- `GET /evaluate` (ve `/api/evaluate`) login gerektirmez — ürün API’leri bozulmaz.  
-- Admin key yalnızca sunucuda: `FEATURE_FLAGS_ADMIN_API_KEY` (`NEXT_PUBLIC_` yok).  
-- Delivery `api_key` proje bazlıdır; SaaS Engine secret’ıdır.  
-- FastAPI `/admin/*` hâlâ admin API key ister; Next BFF key’i basmadan önce session zorunlu.  
-- Alembic migrations sonraki sprint (`create_all` şimdilik bootstrap).
+## License / status
 
-## Port notları (Windows)
-
-- Yerel Postgres çakışması varsa Compose **5433** kullanır.  
-- `8000` / `8001` doluysa API’yi `8002` ile çalıştır; `.env.local` içindeki `FEATURE_FLAGS_API_URL` ile eşleştir.
+Early open share — schema bootstrap uses `create_all` (Alembic can come later). Contributions and issues welcome once you fork or clone.

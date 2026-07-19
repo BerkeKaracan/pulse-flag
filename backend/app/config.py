@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def normalize_database_url(url: str) -> str:
-    """Railway/Supabase often provide postgres:// — SQLAlchemy needs postgresql+psycopg://."""
+    """Providers often give postgres:// — SQLAlchemy needs postgresql+psycopg://."""
     if url.startswith("postgres://"):
         url = "postgresql+psycopg://" + url.removeprefix("postgres://")
     elif url.startswith("postgresql://") and "+psycopg" not in url:
@@ -19,9 +19,8 @@ def normalize_database_url(url: str) -> str:
 
 def prefer_ipv4_and_ssl(url: str) -> str:
     """
-    Render (and many PaaS) cannot reach Supabase direct DB over IPv6.
+    Many PaaS hosts cannot reach Supabase direct DB over IPv6.
     Prefer an A-record hostaddr when available, and require SSL for Supabase.
-    If the host is IPv6-only, use Supabase Session pooler URI in DATABASE_URL instead.
     """
     parsed = urlparse(url)
     host = parsed.hostname
@@ -45,7 +44,6 @@ def prefer_ipv4_and_ssl(url: str) -> str:
             if infos:
                 query["hostaddr"] = infos[0][4][0]
         except OSError:
-            # IPv6-only DNS — caller must switch to the Supabase pooler URL.
             pass
 
     return urlunparse(parsed._replace(query=urlencode(query)))
@@ -67,13 +65,19 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5433/pulse_flag"
     feature_flags_api_key: str | None = None
-    # Exact origins; localhost + *.vercel.app also allowed via regex in main.py
+    # development | production
+    app_env: str = "development"
+    # Exact browser origins allowed for CORS (admin UI). Required in production.
     cors_origins: str = "http://localhost:3000,http://localhost:3001"
 
     @field_validator("database_url")
     @classmethod
     def _normalize_db_url(cls, value: str) -> str:
         return normalize_database_url(value)
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.strip().lower() == "production"
 
     @property
     def cors_origin_list(self) -> list[str]:

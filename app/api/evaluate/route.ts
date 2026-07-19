@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFeatureFlagsApiUrl } from "@/lib/server-env";
+import { createClient } from "@/lib/supabase/server";
 
 /**
- * Proxies delivery evaluate calls for the admin "Canlı test" panel.
- * Optional Authorization is the project's delivery api_key (same as SaaS Engine).
+ * Proxies delivery evaluate for the signed-in admin "live test" panel.
+ * Forwards only the project delivery api_key from Authorization — never the admin key.
+ * Product backends should call FastAPI /evaluate directly, not this BFF route.
  */
 export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+  }
+
   const apiUrl = getFeatureFlagsApiUrl();
   const target = `${apiUrl}/evaluate${request.nextUrl.search}`;
 
@@ -29,7 +39,7 @@ export async function GET(request: NextRequest) {
     });
   } catch {
     return NextResponse.json(
-      { detail: "API'ye ulaşılamıyor. FastAPI servisinin çalıştığından emin olun." },
+      { detail: "Upstream API unreachable" },
       { status: 502 },
     );
   }

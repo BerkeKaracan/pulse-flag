@@ -1,44 +1,46 @@
-# Pulse Flag API (FastAPI)
+# Pulse Flag API
+
+FastAPI service for feature-flag **delivery** (`GET /evaluate`) and **admin** CRUD (`/admin/*`).
 
 ## Delivery contract
 
 ```http
-GET /evaluate?key=ai.canvas_generator&tenant_id=<uuid>
-Authorization: Bearer <PROJECT_OR_PLATFORM_API_KEY>
+GET /evaluate?key=ai.canvas_generator&tenant_id=<uuid>&tier=pro
+Authorization: Bearer <PROJECT_DELIVERY_API_KEY>
 ```
 
 ```json
 { "enabled": true }
 ```
 
-Optional: `&tier=pro`
+- Project delivery keys only (platform admin key is rejected).
+- Missing/invalid key → `401`.
+- Unknown / inactive flag → `{ "enabled": false }`.
 
-## Run locally
+## Admin contract
+
+All `/admin/*` routes require:
+
+1. `Authorization: Bearer <FEATURE_FLAGS_API_KEY>`
+2. `X-User-Id: <supabase-user-id>` (set by the Next.js BFF after session auth)
+
+Projects are scoped by `user_id`. Cross-tenant access returns `404`.
+
+Keep this API private to the BFF when possible. Possession of the platform admin key plus a victim’s user id is enough to act as that user.
+
+## Local run
 
 ```bash
 python -m venv .venv
-.\.venv\Scripts\activate
+source .venv/bin/activate   # Windows: .\.venv\Scripts\activate
 pip install -r requirements.txt
-copy .env.example .env
+cp .env.example .env
 uvicorn app.main:app --reload --port 8002
 ```
 
-Healthcheck: `GET /health`
+## Production checklist
 
-## Deploy (Render + Supabase)
-
-- Dockerfile included (`backend/` as root)
-- Set `DATABASE_URL`, `FEATURE_FLAGS_API_KEY`, `CORS_ORIGINS`
-- `postgres://` URLs are auto-normalized to `postgresql+psycopg://`
-
-### Important: IPv4 / pooler
-
-Render often cannot open outbound IPv6. Supabase **direct** hosts (`db.<ref>.supabase.co:5432`) may resolve to IPv6 and crash startup with `Network is unreachable`.
-
-Use the **Session pooler** connection string from Supabase Dashboard → Database → Connect:
-
-```env
-DATABASE_URL=postgresql+psycopg://postgres.YOUR_REF:PASSWORD@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
-```
-
-Avoid the direct `db.*.supabase.co` URI on Render unless you enabled the Supabase IPv4 add-on.
+- Set `APP_ENV=production` (disables `/docs` and loose CORS regex)
+- Set a strong `FEATURE_FLAGS_API_KEY`
+- Use Supabase **Session pooler** `DATABASE_URL` on IPv4-only hosts (e.g. Render)
+- Set `CORS_ORIGINS` to your exact admin origin(s)

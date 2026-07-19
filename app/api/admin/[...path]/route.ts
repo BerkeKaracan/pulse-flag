@@ -9,6 +9,14 @@ type RouteContext = {
   params: Promise<{ path: string[] }>;
 };
 
+function isSafePathSegment(segment: string): boolean {
+  if (!segment || segment === "." || segment === "..") return false;
+  if (segment.includes("/") || segment.includes("\\") || segment.includes("\0")) {
+    return false;
+  }
+  return true;
+}
+
 async function proxy(request: NextRequest, context: RouteContext) {
   const supabase = await createClient();
   const {
@@ -19,15 +27,27 @@ async function proxy(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
   }
 
-  const { path } = await context.params;
-  const apiUrl = getFeatureFlagsApiUrl();
   const adminKey = getFeatureFlagsAdminApiKey();
+  if (!adminKey) {
+    return NextResponse.json(
+      { detail: "FEATURE_FLAGS_ADMIN_API_KEY is not configured" },
+      { status: 503 },
+    );
+  }
+
+  const { path } = await context.params;
+  if (!path?.length || !path.every(isSafePathSegment)) {
+    return NextResponse.json({ detail: "Invalid path" }, { status: 400 });
+  }
+
+  const apiUrl = getFeatureFlagsApiUrl();
   const target = `${apiUrl}/admin/${path.join("/")}${request.nextUrl.search}`;
 
+  // Build headers from scratch — never forward client Authorization / X-User-Id.
   const headers = new Headers();
   const contentType = request.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
-  if (adminKey) headers.set("authorization", `Bearer ${adminKey}`);
+  headers.set("authorization", `Bearer ${adminKey}`);
   headers.set("X-User-Id", user.id);
 
   let body: ArrayBuffer | undefined;
@@ -61,7 +81,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
     });
   } catch {
     return NextResponse.json(
-      { detail: "API'ye ulaşılamıyor. FastAPI servisinin çalıştığından emin olun." },
+      { detail: "Upstream API unreachable" },
       { status: 502 },
     );
   }
