@@ -94,11 +94,16 @@ def require_supabase_user(
             detail="Missing X-Supabase-Access-Token",
         )
 
-    user_id = resolve_supabase_user_id(token, settings)
+    user_id, notes = resolve_supabase_user_id(token, settings)
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired Supabase access token",
+            detail=(
+                "Invalid or expired Supabase access token "
+                f"({', '.join(notes)}). "
+                "On Render set SUPABASE_URL + SUPABASE_ANON_KEY to the same project "
+                "as the admin app, redeploy, then sign out/in."
+            ),
         )
     return user_id
 

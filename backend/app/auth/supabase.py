@@ -14,12 +14,16 @@ from app.config import Settings
 logger = logging.getLogger("pulse_flag.supabase_auth")
 
 
-def _verify_via_auth_api(token: str, settings: Settings) -> str | None:
+def _clean(value: str | None) -> str:
+    return (value or "").strip().strip('"').strip("'")
+
+
+def _verify_via_auth_api(token: str, settings: Settings) -> tuple[str | None, str]:
     """Ask Supabase Auth who this access token belongs to (algorithm-agnostic)."""
-    base = (settings.supabase_url or "").rstrip("/")
-    anon = (settings.supabase_anon_key or "").strip()
+    base = _clean(settings.supabase_url).rstrip("/")
+    anon = _clean(settings.supabase_anon_key)
     if not base or not anon:
-        return None
+        return None, "auth_api_skipped_no_url_or_anon"
 
     req = Request(
         f"{base}/auth/v1/user",
@@ -34,21 +38,24 @@ def _verify_via_auth_api(token: str, settings: Settings) -> str | None:
         with urlopen(req, timeout=5.0) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
     except HTTPError as exc:
-        if exc.code in {401, 403}:
-            return None
-        logger.warning("Supabase Auth /user HTTP %s", exc.code)
-        return None
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", errors="replace")[:160]
+        except Exception:
+            pass
+        logger.warning("Supabase Auth /user HTTP %s: %s", exc.code, body)
+        return None, f"auth_api_http_{exc.code}"
     except (URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
         logger.warning("Supabase Auth /user failed: %s", exc)
-        return None
+        return None, "auth_api_unreachable"
 
     user_id = payload.get("id")
     if isinstance(user_id, str) and user_id.strip():
-        return user_id.strip()
-    return None
+        return user_id.strip(), "auth_api_ok"
+    return None, "auth_api_no_id"
 
 
-def _verify_via_jwt_secret(token: str, secret: str) -> str | None:
+def _verify_via_jwt_secret(token: str, secret: str) -> tuple[str | None, str]:
     try:
         payload = jwt.decode(
             token,
@@ -58,20 +65,20 @@ def _verify_via_jwt_secret(token: str, secret: str) -> str | None:
         )
     except InvalidTokenError:
         try:
-            # Some projects omit / change aud; still require a valid signature + sub.
             payload = jwt.decode(
                 token,
                 secret,
                 algorithms=["HS256"],
                 options={"verify_aud": False},
             )
-        except InvalidTokenError:
-            return None
+        except InvalidTokenError as exc:
+            logger.warning("HS256 JWT verify failed: %s", exc)
+            return None, "jwt_secret_invalid"
 
     user_id = payload.get("sub")
     if isinstance(user_id, str) and user_id.strip():
-        return user_id.strip()
-    return None
+        return user_id.strip(), "jwt_secret_ok"
+    return None, "jwt_secret_no_sub"
 
 
 @lru_cache(maxsize=4)
@@ -80,7 +87,7 @@ def _jwks_client(supabase_url: str) -> PyJWKClient:
     return PyJWKClient(f"{base}/auth/v1/.well-known/jwks.json", cache_keys=True)
 
 
-def _verify_via_jwks(token: str, supabase_url: str) -> str | None:
+def _verify_via_jwks(token: str, supabase_url: str) -> tuple[str | None, str]:
     try:
         client = _jwks_client(supabase_url)
         key = client.get_signing_key_from_jwt(token)
@@ -102,43 +109,49 @@ def _verify_via_jwks(token: str, supabase_url: str) -> str | None:
             )
         except Exception as exc:
             logger.warning("JWKS verify failed: %s", exc)
-            return None
+            return None, "jwks_invalid"
 
     user_id = payload.get("sub")
     if isinstance(user_id, str) and user_id.strip():
-        return user_id.strip()
-    return None
+        return user_id.strip(), "jwks_ok"
+    return None, "jwks_no_sub"
 
 
-def resolve_supabase_user_id(token: str, settings: Settings) -> str | None:
+def resolve_supabase_user_id(token: str, settings: Settings) -> tuple[str | None, list[str]]:
     """
     Resolve auth.users.id from an access token.
 
-    Order:
-    1. Supabase Auth /user (works for legacy + new signing keys)
-    2. Local HS256 with SUPABASE_JWT_SECRET
-    3. JWKS (ES256/RS256) when SUPABASE_URL is set
+    Returns (user_id_or_none, attempt_notes).
     """
-    user_id = _verify_via_auth_api(token, settings)
+    notes: list[str] = []
+
+    user_id, note = _verify_via_auth_api(token, settings)
+    notes.append(note)
     if user_id:
-        return user_id
+        return user_id, notes
 
-    secret = (settings.supabase_jwt_secret or "").strip()
+    secret = _clean(settings.supabase_jwt_secret)
     if secret:
-        user_id = _verify_via_jwt_secret(token, secret)
+        user_id, note = _verify_via_jwt_secret(token, secret)
+        notes.append(note)
         if user_id:
-            return user_id
+            return user_id, notes
+    else:
+        notes.append("jwt_secret_skipped")
 
-    if (settings.supabase_url or "").strip():
-        user_id = _verify_via_jwks(token, settings.supabase_url.strip())
+    url = _clean(settings.supabase_url)
+    if url:
+        user_id, note = _verify_via_jwks(token, url)
+        notes.append(note)
         if user_id:
-            return user_id
+            return user_id, notes
+    else:
+        notes.append("jwks_skipped")
 
-    return None
+    return None, notes
 
 
 def auth_configured(settings: Settings) -> bool:
-    return bool(
-        ((settings.supabase_url or "").strip() and (settings.supabase_anon_key or "").strip())
-        or (settings.supabase_jwt_secret or "").strip()
-    )
+    has_auth_api = bool(_clean(settings.supabase_url) and _clean(settings.supabase_anon_key))
+    has_jwt = bool(_clean(settings.supabase_jwt_secret))
+    return has_auth_api or has_jwt

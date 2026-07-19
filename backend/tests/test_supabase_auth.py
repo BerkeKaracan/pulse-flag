@@ -35,7 +35,9 @@ def test_resolve_via_jwt_secret(monkeypatch: pytest.MonkeyPatch):
         algorithm="HS256",
     )
 
-    assert resolve_supabase_user_id(token, settings) == "user-abc-123"
+    user_id, notes = resolve_supabase_user_id(token, settings)
+    assert user_id == "user-abc-123"
+    assert "jwt_secret_ok" in notes
 
 
 def test_require_supabase_user_rejects_bad_token(monkeypatch: pytest.MonkeyPatch):

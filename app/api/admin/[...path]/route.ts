@@ -17,30 +17,36 @@ function isSafePathSegment(segment: string): boolean {
   return true;
 }
 
-async function proxy(request: NextRequest, context: RouteContext) {
-  const supabase = await createClient();
-
-  // getUser() validates the session with Supabase Auth (preferred on the server).
+async function resolveAccessToken(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<string | null> {
+  // Validate the user with Auth (may refresh cookies under the hood).
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
-  if (userError || !user) {
-    return NextResponse.json(
-      { detail: "Unauthorized — sign in again" },
-      { status: 401 },
-    );
+  if (userError || !user) return null;
+
+  // Prefer a freshly refreshed access token — getSession() can return a stale JWT
+  // right after getUser() rotates cookies on the server.
+  const refreshed = await supabase.auth.refreshSession();
+  if (refreshed.data.session?.access_token) {
+    return refreshed.data.session.access_token;
   }
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const accessToken = session?.access_token;
+  const current = await supabase.auth.getSession();
+  return current.data.session?.access_token ?? null;
+}
+
+async function proxy(request: NextRequest, context: RouteContext) {
+  const supabase = await createClient();
+  const accessToken = await resolveAccessToken(supabase);
+
   if (!accessToken) {
     return NextResponse.json(
       {
         detail:
-          "No access token in session. Sign out and sign in again so cookies refresh.",
+          "Unauthorized — no valid Supabase session. Sign out and sign in again.",
       },
       { status: 401 },
     );
