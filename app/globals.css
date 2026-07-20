@@ -18,4 +18,169 @@
 body {
   background: var(--background);
   color: var(--foreground);
+  overflow-x: hidden;
+}
+
+/* ------------------------------------------------------------------ */
+/* Responsive layer — CSS only (no component / logic changes)         */
+/* ------------------------------------------------------------------ */
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+pre,
+code {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+pre {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  /* Tighter page chrome */
+  header > div {
+    height: auto !important;
+    min-height: 3.5rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  header nav {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem !important;
+    align-items: center;
+  }
+
+  header nav > .border-l {
+    border-left: none !important;
+    padding-left: 0 !important;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  main {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    padding-top: 1.25rem !important;
+    padding-bottom: 2rem !important;
+  }
+
+  /* Readable type scale */
+  h1 {
+    font-size: 1.625rem !important;
+    line-height: 1.25 !important;
+  }
+
+  h2 {
+    font-size: 1.125rem !important;
+  }
+
+  /* Stack list rows that are side-by-side on desktop */
+  main ul > li.flex {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  main ul > li.flex > div.flex {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  main ul > li.flex > div.flex > a,
+  main ul > li.flex > div.flex > button,
+  main ul > li.flex > a {
+    flex: 1 1 auto;
+  }
+
+  main ul > li.flex > div.flex button,
+  main ul > li.flex > a button {
+    width: 100%;
+  }
+
+  /* Forms and action clusters */
+  main form,
+  main section form {
+    grid-template-columns: 1fr !important;
+  }
+
+  main .flex.flex-wrap,
+  main .flex.gap-3,
+  main .flex.gap-2 {
+    width: 100%;
+  }
+
+  main .flex.flex-wrap > a,
+  main .flex.gap-3 > a,
+  main .flex.gap-2 > a {
+    flex: 1 1 100%;
+  }
+
+  main .flex.flex-wrap > a > button,
+  main .flex.gap-3 > a > button,
+  main .flex.gap-2 > a > button,
+  main .flex.flex-wrap > button,
+  main .flex.gap-3 > button {
+    width: 100%;
+  }
+
+  /* Cards / panels breathe less on small screens */
+  main section,
+  main .rounded-2xl,
+  main .rounded-xl {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Long UUIDs / keys */
+  main .font-mono,
+  main code {
+    font-size: 0.7rem !important;
+  }
+
+  /* Login & centered forms */
+  body > div > main,
+  body form {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  header a,
+  header button,
+  header span {
+    font-size: 0.8125rem;
+  }
+
+  h1 {
+    font-size: 1.375rem !important;
+  }
+}
+
+/* Prefer comfortable tap targets on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  a {
+    min-height: 2.5rem;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px !important; /* prevents iOS zoom on focus */
+  }
 }
