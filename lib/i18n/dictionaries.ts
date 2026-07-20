@@ -123,6 +123,11 @@ export type Dictionary = {
     querying: string;
     error: string;
   };
+  wakeup: {
+    title: string;
+    body: string;
+    timer: string;
+  };
 };
 
 const en: Dictionary = {
@@ -187,7 +192,7 @@ const en: Dictionary = {
       "Register products that consume feature flags (e.g. SaaS Engine). Then add flags and rules, and test with",
     newProject: "New project",
     apiUnavailable:
-      "API unreachable. Make sure FastAPI is running, then refresh.",
+      "API unreachable. On free Render hosting it may be waking up (~50s) — wait for the banner, then refresh.",
     empty: "No projects yet. First step: register SaaS Engine.",
     createFirst: "Create first project",
     detail: "Details",
@@ -271,6 +276,11 @@ const en: Dictionary = {
     querying: "Querying…",
     error: "Test failed",
   },
+  wakeup: {
+    title: "API is waking up",
+    body: "Free hosting (Render) sleeps when idle. We’re pinging it now — first response can take about 50 seconds. Keep this tab open.",
+    timer: "Elapsed {elapsed}s · typically ~{remaining}s left",
+  },
 };
 
 const tr: Dictionary = {
@@ -335,7 +345,7 @@ const tr: Dictionary = {
       "Feature flag kullanacak ürünleri (ör. SaaS Engine) burada kaydedin. Sonra flag ve rule ekleyip",
     newProject: "Yeni project",
     apiUnavailable:
-      "API’ye ulaşılamıyor. FastAPI’nin çalıştığından emin olun, sonra sayfayı yenileyin.",
+      "API’ye ulaşılamıyor. Ücretsiz Render uykudan uyanıyor olabilir (~50 sn) — üstteki uyarıyı bekle, sonra yenile.",
     empty: "Henüz project yok. İlk adım: SaaS Engine’i kaydet.",
     createFirst: "İlk project’i oluştur",
     detail: "Detay",
@@ -417,6 +427,11 @@ const tr: Dictionary = {
     submit: "Evaluate et",
     querying: "Sorgulanıyor…",
     error: "Test başarısız",
+  },
+  wakeup: {
+    title: "API uyanıyor",
+    body: "Ücretsiz hosting (Render) boşta uyur. Şimdi uyandırıyoruz — ilk cevap yaklaşık 50 saniye sürebilir. Bu sekmeyi açık tut.",
+    timer: "Geçen {elapsed} sn · genelde ~{remaining} sn kaldı",
   },
 };
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { LocaleProvider } from "@/components/locale-provider";
 import { LoginButtons } from "@/components/login-buttons";
+import { ApiWakeupBanner } from "@/components/api-wakeup-banner";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,6 +40,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <LocaleSwitcher />
           </div>
         </header>
+
+        <ApiWakeupBanner />
 
         <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
           <h1 className="font-[family-name:var(--font-display)] text-3xl tracking-tight text-[var(--ink)]">
