@@ -51,6 +51,9 @@ export type Dictionary = {
     detail: string;
     flags: string;
     loadError: string;
+    delete: string;
+    deleteConfirm: string;
+    deleteError: string;
   };
   newProject: {
     step: string;
@@ -210,6 +213,10 @@ const en: Dictionary = {
     detail: "Details",
     flags: "Flags",
     loadError: "Failed to load projects",
+    delete: "Delete",
+    deleteConfirm:
+      'Delete project "{name}"? This permanently removes its flags, rules, and delivery api_key. Cannot be undone.',
+    deleteError: "Could not delete project",
   },
   newProject: {
     step: "Step 1 / 3",
@@ -377,6 +384,10 @@ const tr: Dictionary = {
     detail: "Detay",
     flags: "Flags",
     loadError: "Projeler yüklenemedi",
+    delete: "Sil",
+    deleteConfirm:
+      '"{name}" project’ini silmek istediğine emin misin? Flag’ler, rule’lar ve delivery api_key kalıcı olarak silinir. Geri alınamaz.',
+    deleteError: "Project silinemedi",
   },
   newProject: {
     step: "Adım 1 / 3",

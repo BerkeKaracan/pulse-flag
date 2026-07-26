@@ -26,6 +26,9 @@ export const adminApi = {
   createProject: (body: { name: string; slug: string; description?: string }) =>
     api<Project>("/projects", { method: "POST", body: JSON.stringify(body) }),
   getProject: (projectId: string) => api<Project>(`/projects/${projectId}`),
+  deleteProject: (projectId: string) =>
+    api<void>(`/projects/${projectId}`, { method: "DELETE" }),
+
   listFlags: (projectId: string) =>
     api<FeatureFlag[]>(`/projects/${projectId}/flags`),
   createFlag: (

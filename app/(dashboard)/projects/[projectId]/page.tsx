@@ -2,6 +2,7 @@ import Link from "next/link";
 import { adminApi } from "@/lib/api.server";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/copy-button";
+import { DeleteProjectButton } from "@/components/delete-project-button";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 
 type Props = {
@@ -81,13 +82,18 @@ export default async function ProjectDetailPage({ params }: Props) {
         <strong>{dict.projectDetail.nextStep}</strong>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Link href={`/projects/${project.id}/flags`}>
           <Button>{dict.projectDetail.manageFlags}</Button>
         </Link>
         <Link href={`/projects/${project.id}/flags/new`}>
           <Button variant="secondary">{dict.projectDetail.createFlag}</Button>
         </Link>
+        <DeleteProjectButton
+          projectId={project.id}
+          projectName={project.name}
+          redirectAfter
+        />
       </div>
     </div>
   );

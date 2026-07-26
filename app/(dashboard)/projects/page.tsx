@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { adminApi } from "@/lib/api.server";
 import { Button } from "@/components/ui/button";
+import { DeleteProjectButton } from "@/components/delete-project-button";
 import { HowItWorks } from "@/components/how-it-works";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 
@@ -67,13 +68,17 @@ export default async function ProjectsPage() {
               </Link>
               <p className="mt-1 text-xs text-zinc-500">slug: {project.slug}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Link href={`/projects/${project.id}`}>
                 <Button variant="ghost">{dict.projects.detail}</Button>
               </Link>
               <Link href={`/projects/${project.id}/flags`}>
                 <Button variant="secondary">{dict.projects.flags}</Button>
               </Link>
+              <DeleteProjectButton
+                projectId={project.id}
+                projectName={project.name}
+              />
             </div>
           </li>
         ))}

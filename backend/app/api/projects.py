@@ -65,3 +65,17 @@ def update_project(
     db.commit()
     db.refresh(project)
     return project
+
+
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(
+    project: Project = Depends(get_owned_project),
+    db: Session = Depends(get_db),
+) -> None:
+    """
+    Owner-only hard delete. Cascades flags + rules for this project only
+    (DB ON DELETE CASCADE + ORM orphan cascade). Other owners untouched.
+    """
+    db.delete(project)
+    db.commit()
+
