@@ -1,7 +1,11 @@
 import uuid
 
 from app.models.targeting_rule import TargetingRule
-from app.services.evaluator import normalize_tier, rule_matches
+from app.services.evaluator import (
+    _is_paid_tiers_rule,
+    normalize_tier,
+    rule_matches,
+)
 
 
 def test_empty_constraints_match_nothing():
@@ -60,3 +64,28 @@ def test_intersection_of_tenant_and_tier():
     assert rule_matches(rule, tenant, "advanced") is True
     assert rule_matches(rule, tenant, "pro") is False
     assert rule_matches(rule, uuid.uuid4(), "advanced") is False
+
+
+def test_paid_tiers_rule_shape():
+    paid = TargetingRule(
+        allowed_tenant_ids=[],
+        allowed_tiers=["advanced", "pro"],
+        enabled=True,
+    )
+    assert _is_paid_tiers_rule(paid) is True
+
+    # Tenant-scoped must not count as the shared paid-tiers template
+    tenant = uuid.uuid4()
+    mixed = TargetingRule(
+        allowed_tenant_ids=[tenant],
+        allowed_tiers=["advanced", "pro"],
+        enabled=True,
+    )
+    assert _is_paid_tiers_rule(mixed) is False
+
+    basic_only = TargetingRule(
+        allowed_tenant_ids=[],
+        allowed_tiers=["basic"],
+        enabled=True,
+    )
+    assert _is_paid_tiers_rule(basic_only) is False

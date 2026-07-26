@@ -1,6 +1,7 @@
 import { adminApi } from "@/lib/api.server";
 import { AddRuleForm } from "./add-rule-form";
 import { DeleteRuleButton } from "./delete-rule-button";
+import { EnsurePaidTiersButton } from "@/components/ensure-paid-tiers-button";
 import { EvaluateTester } from "@/components/evaluate-tester";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 
@@ -87,9 +88,16 @@ export default async function FlagDetailPage({ params }: Props) {
         </ul>
       </section>
 
+      <EnsurePaidTiersButton projectId={projectId} flagId={flagId} />
+
       <AddRuleForm projectId={projectId} flagId={flagId} />
 
-      <EvaluateTester flagKey={flag.key} apiKey={project.api_key} />
+      <EvaluateTester
+        projectId={projectId}
+        flagId={flagId}
+        flagKey={flag.key}
+        apiKey={project.api_key}
+      />
     </div>
   );
 }

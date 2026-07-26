@@ -102,6 +102,13 @@ export function AddRuleForm({ projectId, flagId }: Props) {
             value={tiers}
             onChange={(e) => setTiers(e.target.value)}
           />
+          <button
+            type="button"
+            onClick={() => setTiers("advanced,pro")}
+            className="text-xs font-medium text-teal-800 underline underline-offset-2 hover:text-teal-950"
+          >
+            {dict.addRule.tiersPreset}
+          </button>
         </div>
         <div className="space-y-2">
           <Label htmlFor="priority">{dict.addRule.priority}</Label>

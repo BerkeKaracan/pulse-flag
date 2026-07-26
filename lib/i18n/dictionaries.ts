@@ -66,6 +66,7 @@ export type Dictionary = {
     label: string;
     apiKeyTitle: string;
     apiKeyHint: string;
+    apiKeyWarning: string;
     copyKey: string;
     curlTitle: string;
     copyCurl: string;
@@ -98,6 +99,13 @@ export type Dictionary = {
     rulesTitle: string;
     rulesHint: string;
     emptyRules: string;
+    ensureTitle: string;
+    ensureHint: string;
+    ensureSubmit: string;
+    ensureCreated: string;
+    ensureUpdated: string;
+    ensureAlready: string;
+    ensureError: string;
   };
   addRule: {
     step: string;
@@ -108,6 +116,7 @@ export type Dictionary = {
     tenantsPlaceholder: string;
     tiers: string;
     tiersPlaceholder: string;
+    tiersPreset: string;
     priority: string;
     enableOnMatch: string;
     submit: string;
@@ -122,6 +131,9 @@ export type Dictionary = {
     submit: string;
     querying: string;
     error: string;
+    explainReason: string;
+    explainMatchedRule: string;
+    explainRulesConsidered: string;
   };
   wakeup: {
     title: string;
@@ -214,6 +226,8 @@ const en: Dictionary = {
     label: "Project",
     apiKeyTitle: "Delivery api_key",
     apiKeyHint: "Put this in SaaS Engine as Authorization: Bearer …",
+    apiKeyWarning:
+      "SaaS FEATURE_FLAGS_API_KEY must be THIS project delivery key — not the platform FEATURE_FLAGS_ADMIN_API_KEY. Each Pulse project is isolated; the wrong key evaluates a different (or empty) flag set.",
     copyKey: "Copy key",
     curlTitle: "Ready-made curl",
     copyCurl: "Copy curl",
@@ -247,8 +261,16 @@ const en: Dictionary = {
     default: "default",
     rulesTitle: "Targeting rules",
     rulesHint:
-      "First matching rule (by priority) wins. If none match, the flag default is used.",
+      "First matching rule (by priority) wins. If none match, the flag default is used. Rules apply only inside this project.",
     emptyRules: "No rules yet. Evaluate falls back to the flag default",
+    ensureTitle: "Ensure paid tiers (this project only)",
+    ensureHint:
+      "Activates this flag and upserts a rule: allowed_tiers=advanced,pro for any workspace. Does not change other Pulse projects.",
+    ensureSubmit: "Ensure paid tiers",
+    ensureCreated: "Paid-tiers rule created for this project.",
+    ensureUpdated: "Paid-tiers rule updated for this project.",
+    ensureAlready: "Paid-tiers rule already in place.",
+    ensureError: "Could not ensure paid-tiers rule",
   },
   addRule: {
     step: "Step 3 / 3",
@@ -260,6 +282,7 @@ const en: Dictionary = {
     tenantsPlaceholder: "Workspace UUID(s)",
     tiers: "allowed_tiers (comma-separated)",
     tiersPlaceholder: "advanced,pro",
+    tiersPreset: "Use advanced, pro",
     priority: "priority (lower = first)",
     enableOnMatch: "Enable feature when this rule matches",
     submit: "Add rule",
@@ -272,9 +295,12 @@ const en: Dictionary = {
       "Try the same call your product will make. Response is always",
     tenant: "tenant_id (workspace UUID)",
     tier: "tier (optional)",
-    submit: "Evaluate",
+    submit: "Evaluate + explain",
     querying: "Querying…",
     error: "Test failed",
+    explainReason: "reason",
+    explainMatchedRule: "matched_rule_id",
+    explainRulesConsidered: "rules_considered",
   },
   wakeup: {
     title: "API is waking up",
@@ -367,6 +393,8 @@ const tr: Dictionary = {
     label: "Project",
     apiKeyTitle: "Delivery api_key",
     apiKeyHint: "SaaS Engine’e bunu koy: Authorization: Bearer …",
+    apiKeyWarning:
+      "SaaS FEATURE_FLAGS_API_KEY = BU project’in delivery key’i olmalı; platform FEATURE_FLAGS_ADMIN_API_KEY değil. Her Pulse project izole; yanlış key başka (veya boş) flag setini değerlendirir.",
     copyKey: "Key’i kopyala",
     curlTitle: "Hazır çağrı örneği",
     copyCurl: "curl’ü kopyala",
@@ -400,8 +428,16 @@ const tr: Dictionary = {
     default: "varsayılan",
     rulesTitle: "Targeting rules",
     rulesHint:
-      "İlk eşleşen rule (priority’ye göre) kazanır. Eşleşme yoksa flag varsayılanı kullanılır.",
+      "İlk eşleşen rule (priority’ye göre) kazanır. Eşleşme yoksa flag varsayılanı kullanılır. Rule’lar yalnızca bu project içinde geçerlidir.",
     emptyRules: "Henüz rule yok. Evaluate şu an varsayılana düşer",
+    ensureTitle: "Paid tier’ları sabitle (yalnızca bu project)",
+    ensureHint:
+      "Bu flag’i aktif eder ve allowed_tiers=advanced,pro rule’unu upsert eder. Diğer Pulse project’lerine dokunmaz.",
+    ensureSubmit: "Paid tier’ları sabitle",
+    ensureCreated: "Bu project için paid-tiers rule oluşturuldu.",
+    ensureUpdated: "Bu project için paid-tiers rule güncellendi.",
+    ensureAlready: "Paid-tiers rule zaten hazır.",
+    ensureError: "Paid-tiers rule sabitlenemedi",
   },
   addRule: {
     step: "Adım 3 / 3",
@@ -413,6 +449,7 @@ const tr: Dictionary = {
     tenantsPlaceholder: "Workspace UUID",
     tiers: "allowed_tiers (virgülle)",
     tiersPlaceholder: "advanced,pro",
+    tiersPreset: "advanced, pro kullan",
     priority: "priority (düşük = önce)",
     enableOnMatch: "Eşleşince özelliği aç",
     submit: "Rule ekle",
@@ -424,9 +461,12 @@ const tr: Dictionary = {
     subtitle: "Ürünün soracağı çağrıyı burada dene. Sonuç her zaman",
     tenant: "tenant_id (workspace UUID)",
     tier: "tier (opsiyonel)",
-    submit: "Evaluate et",
+    submit: "Evaluate + explain",
     querying: "Sorgulanıyor…",
     error: "Test başarısız",
+    explainReason: "reason",
+    explainMatchedRule: "matched_rule_id",
+    explainRulesConsidered: "rules_considered",
   },
   wakeup: {
     title: "API uyanıyor",

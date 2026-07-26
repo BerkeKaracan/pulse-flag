@@ -1,7 +1,13 @@
 import "server-only";
 
 import { AdminUpstreamError, adminUpstreamJson } from "@/lib/admin-upstream";
-import type { FeatureFlag, Project, TargetingRule } from "@/lib/api";
+import type {
+  EnsurePaidTiersResult,
+  ExplainResult,
+  FeatureFlag,
+  Project,
+  TargetingRule,
+} from "@/lib/api";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   try {
@@ -38,6 +44,23 @@ export const adminApi = {
     }),
   getFlag: (projectId: string, flagId: string) =>
     api<FeatureFlag>(`/projects/${projectId}/flags/${flagId}`),
+  explainFlag: (
+    projectId: string,
+    flagId: string,
+    tenantId: string,
+    tier?: string,
+  ) => {
+    const params = new URLSearchParams({ tenant_id: tenantId });
+    if (tier) params.set("tier", tier);
+    return api<ExplainResult>(
+      `/projects/${projectId}/flags/${flagId}/explain?${params}`,
+    );
+  },
+  ensurePaidTiers: (projectId: string, flagId: string) =>
+    api<EnsurePaidTiersResult>(
+      `/projects/${projectId}/flags/${flagId}/ensure-paid-tiers`,
+      { method: "POST" },
+    ),
   createRule: (
     projectId: string,
     flagId: string,

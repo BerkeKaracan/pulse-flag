@@ -53,6 +53,9 @@ export default async function ProjectDetailPage({ params }: Props) {
             <p className="mt-1 text-xs text-zinc-500">
               {dict.projectDetail.apiKeyHint}
             </p>
+            <p className="mt-2 text-xs font-medium text-amber-800">
+              {dict.projectDetail.apiKeyWarning}
+            </p>
           </div>
           <CopyButton
             value={project.api_key}

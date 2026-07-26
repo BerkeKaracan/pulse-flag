@@ -38,6 +38,26 @@ export type EvaluateResult = {
   enabled: boolean;
 };
 
+export type ExplainResult = {
+  enabled: boolean;
+  reason: "flag_missing" | "flag_inactive" | "rule_match" | "default";
+  project_id: string;
+  flag_id: string | null;
+  flag_key: string | null;
+  matched_rule_id: string | null;
+  rules_considered: number;
+  normalized_tier: string | null;
+};
+
+export type EnsurePaidTiersResult = {
+  flag_id: string;
+  project_id: string;
+  created_rule: boolean;
+  updated_rule: boolean;
+  rule_id: string;
+  is_active: boolean;
+};
+
 /**
  * Client-safe admin API (BFF only).
  * Server Components should import from `@/lib/api.server` to skip the self-fetch hop.
@@ -157,6 +177,23 @@ export const adminApi = {
     }),
   getFlag: (projectId: string, flagId: string) =>
     api<FeatureFlag>(`/projects/${projectId}/flags/${flagId}`),
+  explainFlag: (
+    projectId: string,
+    flagId: string,
+    tenantId: string,
+    tier?: string,
+  ) => {
+    const params = new URLSearchParams({ tenant_id: tenantId });
+    if (tier) params.set("tier", tier);
+    return api<ExplainResult>(
+      `/projects/${projectId}/flags/${flagId}/explain?${params}`,
+    );
+  },
+  ensurePaidTiers: (projectId: string, flagId: string) =>
+    api<EnsurePaidTiersResult>(
+      `/projects/${projectId}/flags/${flagId}/ensure-paid-tiers`,
+      { method: "POST" },
+    ),
   createRule: (
     projectId: string,
     flagId: string,
